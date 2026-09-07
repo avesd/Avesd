@@ -1,0 +1,7 @@
+interface:
+  display_name: "UI Visual QA"
+  short_description: "Capture and inspect affected UI states after changes"
+  default_prompt: "Use $ui-visual-qa to open the affected UI, capture its relevant states, inspect the screenshots, and fix in-scope visual defects."
+
+policy:
+  allow_implicit_invocation: true
