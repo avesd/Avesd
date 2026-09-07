@@ -9,6 +9,7 @@ import { InMemoryWorkspaceRepository } from "./in-memory-workspace-repository";
 import type {
   DashboardId,
   DashboardScope,
+  DataSourceId,
   WidgetInstanceId,
   WorkspaceId,
 } from "./workspace-model";
@@ -20,8 +21,10 @@ const scope: DashboardScope = {
 
 const definition = {
   defaultConfiguration: { tone: "quiet" },
+  configurationVersion: 1,
   defaultSize: { height: 4, width: 6 },
   displayName: "Status",
+  inputs: [{ dataType: "example.number", id: "value" }],
   pluginId: "example.plugin",
   sizePolicy: {
     kind: "fixed" as const,
@@ -123,5 +126,63 @@ describe("DashboardLayoutCoordinator", () => {
       [{ height: 4, width: 12, x: 0, y: 0 }],
       { height: 4, width: 12 },
     )).toEqual({ height: 4, width: 12, x: 12, y: 0 });
+  });
+
+  it("updates widget configuration through the same revisioned transaction", async () => {
+    const { layouts } = await setup();
+    const id = "configured" as WidgetInstanceId;
+    const added = await layouts.apply(scope, {
+      expectedRevision: 0,
+      operations: [{
+        id,
+        pluginId: definition.pluginId,
+        type: "add",
+        widgetTypeId: definition.widgetTypeId,
+      }],
+    });
+
+    const configured = await layouts.apply(scope, {
+      expectedRevision: added.revision,
+      operations: [{ configuration: { tone: "bold" }, id, type: "configure" }],
+    });
+
+    expect(configured.widgets[0]).toMatchObject({
+      configuration: { tone: "bold" },
+      configurationVersion: 1,
+    });
+  });
+
+  it("binds only visible, type-compatible data sources", async () => {
+    const { layouts, repository } = await setup();
+    const id = "bound" as WidgetInstanceId;
+    const sourceId = "source" as DataSourceId;
+    await repository.createDataSource(
+      { kind: "dashboard", ...scope },
+      {
+        configuration: {},
+        dataType: "example.number",
+        id: sourceId,
+        name: "Value",
+        pluginId: "example.plugin",
+        sourceTypeId: "number",
+        value: 0,
+      },
+    );
+    const added = await layouts.apply(scope, {
+      expectedRevision: 0,
+      operations: [{
+        id,
+        pluginId: definition.pluginId,
+        type: "add",
+        widgetTypeId: definition.widgetTypeId,
+      }],
+    });
+
+    const bound = await layouts.apply(scope, {
+      expectedRevision: added.revision,
+      operations: [{ dataSourceIds: [sourceId], id, inputId: "value", type: "bind" }],
+    });
+
+    expect(bound.widgets[0]?.bindings).toEqual({ value: [sourceId] });
   });
 });

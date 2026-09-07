@@ -21,8 +21,10 @@ const ids = {
 const emptyConfiguration = {};
 const widgetDefinition = {
   defaultConfiguration: emptyConfiguration,
+  configurationVersion: 1,
   defaultSize: { height: 4, width: 6 },
   displayName: "Chart",
+  inputs: [],
   pluginId: "example.plugin",
   sizePolicy: {
     kind: "fixed" as const,
@@ -72,13 +74,15 @@ describe("InMemoryWorkspaceRepository", () => {
     );
     await addWidget(repository, ids.workspaceA, ids.dashboardA);
     await repository.createDataSource(
-      { workspaceId: ids.workspaceA },
+      { kind: "workspace", workspaceId: ids.workspaceA },
       {
         configuration: emptyConfiguration,
+        dataType: "example.activity",
         id: ids.dataSource,
         name: "Activity",
         pluginId: "example.plugin",
         sourceTypeId: "example.activity",
+        value: [],
       },
     );
 
@@ -108,13 +112,15 @@ describe("InMemoryWorkspaceRepository", () => {
     );
     await addWidget(repository, ids.workspaceA, ids.dashboardA);
     await repository.createDataSource(
-      { workspaceId: ids.workspaceA },
+      { kind: "workspace", workspaceId: ids.workspaceA },
       {
         configuration: emptyConfiguration,
+        dataType: "example.activity",
         id: ids.dataSource,
         name: "Activity",
         pluginId: "example.plugin",
         sourceTypeId: "example.activity",
+        value: [],
       },
     );
 
@@ -154,13 +160,15 @@ describe("InMemoryWorkspaceRepository", () => {
       { id: ids.dashboardA, name: "Overview", viewState: emptyConfiguration },
     );
     await repository.createDataSource(
-      { workspaceId: ids.workspaceA },
+      { kind: "workspace", workspaceId: ids.workspaceA },
       {
         configuration: emptyConfiguration,
+        dataType: "example.activity",
         id: ids.dataSource,
         name: "Activity",
         pluginId: "example.plugin",
         sourceTypeId: "example.activity",
+        value: [],
       },
     );
 

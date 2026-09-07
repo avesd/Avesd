@@ -1,4 +1,16 @@
 export { InMemoryWorkspaceRepository } from "./in-memory-workspace-repository";
+export {
+  PersistentWorkspaceRepository,
+  parseWorkspaceSnapshot,
+} from "./persistent-workspace-repository";
+export type { WorkspacePersistenceDriver } from "./persistent-workspace-repository";
+export { WorkspaceDataCoordinator } from "./data-sources";
+export type {
+  CreateDataSourceCommand,
+  DataSourceDefinition,
+  DataSourceDefinitionResolver,
+  DataSourceService,
+} from "./data-sources";
 export { WorkspaceModelError } from "./workspace-model-error";
 export {
   DASHBOARD_GRID_COLUMNS,
@@ -16,6 +28,7 @@ export type {
   RangeWidgetSizePolicy,
   WidgetDefinition,
   WidgetDefinitionResolver,
+  WidgetInputDefinition,
   WidgetSize,
   WidgetSizePolicy,
 } from "./dashboard-layout";
@@ -30,6 +43,7 @@ export type {
   DashboardScope,
   DataSource,
   DataSourceId,
+  DataSourceScope,
   GridPlacement,
   JsonObject,
   JsonValue,
@@ -38,5 +52,9 @@ export type {
   Workspace,
   WorkspaceId,
   WorkspaceRepository,
+  WorkspaceRepositoryListener,
+  WorkspaceSnapshot,
   WorkspaceScope,
+  WorkspaceDataSourceScope,
+  DashboardDataSourceScope,
 } from "./workspace-model";

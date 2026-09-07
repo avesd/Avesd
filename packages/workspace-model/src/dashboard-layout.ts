@@ -1,6 +1,7 @@
 import type {
   DashboardLayoutSnapshot,
   DashboardScope,
+  DataSourceId,
   GridPlacement,
   JsonObject,
   WidgetInstance,
@@ -31,11 +32,20 @@ export type WidgetSizePolicy = FixedWidgetSizePolicy | RangeWidgetSizePolicy;
 
 export interface WidgetDefinition {
   readonly defaultConfiguration: JsonObject;
+  readonly configurationVersion: number;
   readonly defaultSize: WidgetSize;
   readonly displayName: string;
+  readonly inputs: readonly WidgetInputDefinition[];
   readonly pluginId: string;
   readonly sizePolicy: WidgetSizePolicy;
   readonly widgetTypeId: string;
+}
+
+export interface WidgetInputDefinition {
+  readonly dataType: string;
+  readonly id: string;
+  readonly multiple?: boolean;
+  readonly required?: boolean;
 }
 
 export type WidgetDefinitionResolver = (
@@ -51,6 +61,17 @@ export type DashboardLayoutOperation =
       readonly pluginId: string;
       readonly type: "add";
       readonly widgetTypeId: string;
+    }
+  | {
+      readonly dataSourceIds: readonly DataSourceId[];
+      readonly id: WidgetInstanceId;
+      readonly inputId: string;
+      readonly type: "bind";
+    }
+  | {
+      readonly configuration: JsonObject;
+      readonly id: WidgetInstanceId;
+      readonly type: "configure";
     }
   | {
       readonly id: WidgetInstanceId;
@@ -84,7 +105,11 @@ export interface DashboardLayoutService {
 
 export type DashboardLayoutErrorCode =
   | "duplicate-widget"
+  | "incompatible-data-source"
+  | "input-not-found"
   | "invalid-placement"
+  | "invalid-widget-definition"
+  | "multiple-sources-unsupported"
   | "overlap"
   | "unsupported-size"
   | "widget-not-found"
@@ -150,7 +175,9 @@ export class DashboardLayoutCoordinator implements DashboardLayoutService {
           assertPlacement(placement);
           assertSupportedSize(definition, placement);
           widgets.push({
+            bindings: {},
             configuration: operation.configuration ?? definition.defaultConfiguration,
+            configurationVersion: definition.configurationVersion,
             dashboardId: scope.dashboardId,
             id: operation.id,
             placement,
@@ -158,6 +185,71 @@ export class DashboardLayoutCoordinator implements DashboardLayoutService {
             widgetTypeId: operation.widgetTypeId,
             workspaceId: scope.workspaceId,
           });
+          break;
+        }
+        case "bind": {
+          const index = requireWidgetIndex(widgets, operation.id);
+          const widget = widgets[index];
+          if (!widget) {
+            break;
+          }
+          const definition = this.#resolveWidget(widget.pluginId, widget.widgetTypeId);
+          if (!definition) {
+            throw new DashboardLayoutError(
+              "widget-unavailable",
+              `cannot bind unavailable widget: ${widget.pluginId}/${widget.widgetTypeId}`,
+            );
+          }
+          const input = definition.inputs.find(({ id }) => id === operation.inputId);
+          if (!input) {
+            throw new DashboardLayoutError(
+              "input-not-found",
+              `widget input is unavailable: ${operation.inputId}`,
+            );
+          }
+          if (!input.multiple && operation.dataSourceIds.length > 1) {
+            throw new DashboardLayoutError(
+              "multiple-sources-unsupported",
+              `widget input accepts one data source: ${operation.inputId}`,
+            );
+          }
+          const sources = await Promise.all(operation.dataSourceIds.map(
+            (dataSourceId) => this.#repository.readDataSource(scope, dataSourceId),
+          ));
+          for (const source of sources) {
+            const visible = source.scope.kind === "workspace"
+              || source.scope.dashboardId === scope.dashboardId;
+            if (!visible || source.dataType !== input.dataType) {
+              throw new DashboardLayoutError(
+                "incompatible-data-source",
+                `data source is incompatible with widget input: ${source.id}`,
+              );
+            }
+          }
+          widgets[index] = {
+            ...widget,
+            bindings: { ...widget.bindings, [operation.inputId]: operation.dataSourceIds },
+          };
+          break;
+        }
+        case "configure": {
+          const index = requireWidgetIndex(widgets, operation.id);
+          const widget = widgets[index];
+          if (!widget) {
+            break;
+          }
+          const definition = this.#resolveWidget(widget.pluginId, widget.widgetTypeId);
+          if (!definition) {
+            throw new DashboardLayoutError(
+              "widget-unavailable",
+              `cannot configure unavailable widget: ${widget.pluginId}/${widget.widgetTypeId}`,
+            );
+          }
+          widgets[index] = {
+            ...widget,
+            configuration: operation.configuration,
+            configurationVersion: definition.configurationVersion,
+          };
           break;
         }
         case "move": {
@@ -245,6 +337,12 @@ export const findAvailablePlacement = (
 };
 
 const assertWidgetDefinition = (definition: WidgetDefinition): void => {
+  if (!Number.isInteger(definition.configurationVersion) || definition.configurationVersion < 1) {
+    throw new DashboardLayoutError(
+      "invalid-widget-definition",
+      `widget ${definition.pluginId}/${definition.widgetTypeId} has an invalid configuration version`,
+    );
+  }
   if (
     definition.sizePolicy.kind === "fixed"
     && definition.sizePolicy.sizes.length === 0
