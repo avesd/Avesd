@@ -8,6 +8,8 @@ add subtree-specific constraints.
 - Communicate with the user in Chinese.
 - Keep checked-in artifacts in English, including code, comments,
   documentation, commit messages, and pull-request text.
+- If screenshots are used during a turn, include those screenshots in the
+  final response to the user.
 
 ## Product boundary
 
