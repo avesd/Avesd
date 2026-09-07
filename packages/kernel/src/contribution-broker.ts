@@ -27,7 +27,7 @@ export class ContributionBroker {
     };
   }
 
-  createScope(): PluginContributions {
+  createScope(pluginId: string): PluginContributions {
     return Object.freeze({
       contribute: <T>(point: ContributionPoint<T>, value: T): Dispose => {
         const registry = this.#registries.get(point as ContributionPoint<unknown>);
@@ -35,7 +35,7 @@ export class ContributionBroker {
           throw new Error(`Unknown contribution point: ${point.id}`);
         }
 
-        return registry.contribute(point.id, value);
+        return registry.contribute(point.id, value, pluginId);
       },
     });
   }

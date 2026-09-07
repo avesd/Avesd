@@ -35,7 +35,7 @@ export class PluginHost {
 
     const candidate = this.#context.plugin((context) => {
       const pluginContext: PluginContext = {
-        contributions: this.#contributions.createScope(),
+        contributions: this.#contributions.createScope(definition.id),
         effect(setup) {
           context.effect(setup, `${definition.id}:effect`);
         },

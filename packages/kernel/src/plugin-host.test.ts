@@ -130,6 +130,9 @@ describe("PluginHost", () => {
     });
 
     expect(registry.get(point.id)).toBe("hello");
+    expect(registry.getAll(point.id)).toEqual([
+      { pluginId: "example", value: "hello" },
+    ]);
     await host.remove("example");
     expect(registry.get(point.id)).toBeUndefined();
   });

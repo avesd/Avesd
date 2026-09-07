@@ -3,19 +3,27 @@ import type { Dispose } from "@avesd/plugin-api";
 type Listener = () => void;
 
 interface Contribution<T> {
+  readonly pluginId?: string;
   readonly token: symbol;
   readonly value: T;
 }
 
+export interface RegisteredContribution<T> {
+  readonly pluginId?: string;
+  readonly value: T;
+}
+
 export class ContributionRegistry<T> {
+  readonly #allSnapshots = new Map<string, readonly RegisteredContribution<T>[]>();
   readonly #contributions = new Map<string, Contribution<T>[]>();
   readonly #listeners = new Set<Listener>();
 
-  contribute(key: string, value: T): Dispose {
-    const contribution = { token: Symbol(key), value };
+  contribute(key: string, value: T, pluginId?: string): Dispose {
+    const contribution = { pluginId, token: Symbol(key), value };
     const entries = this.#contributions.get(key) ?? [];
     entries.push(contribution);
     this.#contributions.set(key, entries);
+    this.#allSnapshots.delete(key);
     this.#emit();
 
     return () => {
@@ -30,12 +38,26 @@ export class ContributionRegistry<T> {
       if (currentEntries.length === 0) {
         this.#contributions.delete(key);
       }
+      this.#allSnapshots.delete(key);
       this.#emit();
     };
   }
 
   get(key: string): T | undefined {
     return this.#contributions.get(key)?.at(-1)?.value;
+  }
+
+  getAll(key: string): readonly RegisteredContribution<T>[] {
+    const current = this.#allSnapshots.get(key);
+    if (current) {
+      return current;
+    }
+    const snapshot = (this.#contributions.get(key) ?? []).map(({ pluginId, value }) => ({
+      pluginId,
+      value,
+    }));
+    this.#allSnapshots.set(key, snapshot);
+    return snapshot;
   }
 
   keys(): readonly string[] {

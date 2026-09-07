@@ -1,0 +1,19 @@
+{
+  "name": "@avesd/workspace-model",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "compile": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "@avesd/configuration": "workspace:*",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
