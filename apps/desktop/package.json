@@ -17,8 +17,10 @@
     "@avesd/kernel": "workspace:*",
     "@avesd/plugin-api": "workspace:*",
     "@avesd/workspace-model": "workspace:*",
+    "@modelcontextprotocol/server": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@avesd/configuration": "workspace:*",

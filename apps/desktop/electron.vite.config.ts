@@ -3,7 +3,21 @@ import { defineConfig, externalizeDepsPlugin } from "electron-vite";
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin({ exclude: ["@avesd/acp-client"] })],
+    build: {
+      rollupOptions: {
+        input: {
+          index: "src/main/index.ts",
+          "workspace-mcp": "src/main/workspace-mcp.ts",
+        },
+      },
+    },
+    plugins: [externalizeDepsPlugin({
+      exclude: [
+        "@avesd/acp-client",
+        "@avesd/workspace-model",
+        "@modelcontextprotocol/server",
+      ],
+    })],
   },
   preload: {
     build: {

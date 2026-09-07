@@ -41,14 +41,27 @@ describe("AcpSessionConnection", () => {
   it("initializes a session and normalizes streamed agent text", async () => {
     const clientToAgent = new TransformStream<Uint8Array>();
     const agentToClient = new TransformStream<Uint8Array>();
+    let permissionOutcome: unknown;
+    let receivedMcpServers: unknown;
     const agent = acp.agent({ name: "test-agent" })
       .onRequest("initialize", () => ({
         agentCapabilities: {},
         agentInfo: { name: "test-agent", title: "Test Agent", version: "1.0.0" },
         protocolVersion: acp.PROTOCOL_VERSION,
       }))
-      .onRequest("session/new", () => ({ sessionId: "session-1" }))
+      .onRequest("session/new", ({ params }) => {
+        receivedMcpServers = params.mcpServers;
+        return { sessionId: "session-1" };
+      })
       .onRequest("session/prompt", async ({ client, params }) => {
+        permissionOutcome = await client.request(
+          acp.methods.client.session.requestPermission,
+          {
+            options: [{ kind: "allow_once", name: "Allow", optionId: "allow" }],
+            sessionId: params.sessionId,
+            toolCall: { name: "avesd_add_widget", toolCallId: "tool-1" },
+          },
+        );
         await client.notify("session/update", {
           sessionId: params.sessionId,
           update: {
@@ -67,6 +80,12 @@ describe("AcpSessionConnection", () => {
     const session = await AcpSessionConnection.connect({
       clientInfo: { name: "test-client", version: "1.0.0" },
       cwd: "/workspace",
+      mcpServers: [{
+        args: ["server.js"],
+        command: "/usr/bin/node",
+        env: [],
+        name: "Avesd workspace",
+      }],
       onEvent,
       stream: {
         readable: agentToClient.readable,
@@ -77,6 +96,10 @@ describe("AcpSessionConnection", () => {
     await expect(session.prompt("Hi")).resolves.toBe("end_turn");
     expect(session.agentName).toBe("Test Agent");
     expect(onEvent).toHaveBeenCalledWith({ text: "Hello", type: "messageChunk" });
+    expect(receivedMcpServers).toEqual([expect.objectContaining({ name: "Avesd workspace" })]);
+    expect(permissionOutcome).toEqual({
+      outcome: { optionId: "allow", outcome: "selected" },
+    });
 
     session.close();
     agentConnection.close();

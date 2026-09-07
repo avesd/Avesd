@@ -1,4 +1,10 @@
 import type { AgentService } from "@avesd/plugin-api";
+import type {
+  DashboardScope,
+  DataSourceDefinition,
+  WidgetDefinition,
+  WorkspaceSnapshot,
+} from "@avesd/workspace-model";
 
 export interface DesktopRuntime {
   readonly chrome: string;
@@ -8,15 +14,37 @@ export interface DesktopRuntime {
 }
 
 export interface DesktopApi {
-  readonly agent: AgentService;
+  readonly agent: DesktopAgentApi;
   readonly runtime: DesktopRuntime;
+  readonly workspaceStorage: WorkspaceStorageApi;
+}
+
+export interface AgentWorkbenchContext {
+  readonly dataSourceDefinitions: readonly DataSourceDefinition[];
+  readonly scope: DashboardScope;
+  readonly widgetDefinitions: readonly WidgetDefinition[];
+}
+
+export interface DesktopAgentApi extends AgentService {
+  configureWorkbench(context: AgentWorkbenchContext): Promise<void>;
+}
+
+export interface WorkspaceStorageApi {
+  load(): Promise<unknown>;
+  save(snapshot: WorkspaceSnapshot): Promise<void>;
 }
 
 export const agentIpcChannels = Object.freeze({
   cancel: "agent:cancel",
   connect: "agent:connect",
+  configureWorkbench: "agent:configure-workbench",
   event: "agent:event",
   prompt: "agent:prompt",
+});
+
+export const workspaceIpcChannels = Object.freeze({
+  load: "workspace:load",
+  save: "workspace:save",
 });
 
 export const parseAgentPrompt = (input: unknown): string => {

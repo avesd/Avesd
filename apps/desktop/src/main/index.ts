@@ -2,11 +2,19 @@ import { app, BrowserWindow, ipcMain, shell } from "electron";
 import type { IpcMainInvokeEvent } from "electron";
 import { join } from "node:path";
 
-import { agentIpcChannels, parseAgentPrompt } from "../shared/desktop-api";
+import {
+  agentIpcChannels,
+  parseAgentPrompt,
+  workspaceIpcChannels,
+} from "../shared/desktop-api";
+import type { AgentWorkbenchContext } from "../shared/desktop-api";
 import { CodexAgentHost } from "./codex-agent-host";
+import { WorkspaceFile } from "./workspace-file";
 
 let agentHost: CodexAgentHost | undefined;
 let mainWindow: BrowserWindow | undefined;
+let workspaceFile: WorkspaceFile | undefined;
+let workspacePath: string | undefined;
 
 const isTrustedExternalUrl = (url: string): boolean => {
   try {
@@ -45,7 +53,14 @@ const createMainWindow = (): BrowserWindow => {
   window.webContents.on("will-navigate", (event) => event.preventDefault());
 
   agentHost?.dispose();
-  agentHost = new CodexAgentHost(process.cwd());
+  if (!workspacePath) {
+    throw new Error("Workspace storage is not ready");
+  }
+  agentHost = new CodexAgentHost(
+    process.cwd(),
+    workspacePath,
+    join(__dirname, "workspace-mcp.js"),
+  );
   const unsubscribe = agentHost.subscribe((event) => {
     if (!window.isDestroyed()) {
       window.webContents.send(agentIpcChannels.event, event);
@@ -82,8 +97,28 @@ ipcMain.handle(agentIpcChannels.connect, (event) => hostForEvent(event).connect(
 ipcMain.handle(agentIpcChannels.prompt, (event, input: unknown) =>
   hostForEvent(event).prompt(parseAgentPrompt(input)));
 ipcMain.handle(agentIpcChannels.cancel, (event) => hostForEvent(event).cancel());
+ipcMain.handle(agentIpcChannels.configureWorkbench, (event, context: unknown) => {
+  const host = hostForEvent(event);
+  if (!context || typeof context !== "object") {
+    throw new TypeError("Agent workbench context must be an object");
+  }
+  host.configureWorkbench(context as AgentWorkbenchContext);
+});
+ipcMain.handle(workspaceIpcChannels.load, (event) => {
+  hostForEvent(event);
+  return workspaceFile?.load();
+});
+ipcMain.handle(workspaceIpcChannels.save, (event, snapshot: unknown) => {
+  hostForEvent(event);
+  if (!workspaceFile) {
+    throw new Error("Workspace storage is not ready");
+  }
+  return workspaceFile.save(snapshot);
+});
 
 app.whenReady().then(() => {
+  workspacePath = join(app.getPath("userData"), "workspace-v1.json");
+  workspaceFile = new WorkspaceFile(workspacePath);
   createMainWindow();
 
   app.on("activate", () => {

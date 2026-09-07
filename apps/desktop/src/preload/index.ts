@@ -1,14 +1,17 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 import type { AgentEvent } from "@avesd/plugin-api";
+import type { WorkspaceSnapshot } from "@avesd/workspace-model";
 
-import { agentIpcChannels } from "../shared/desktop-api";
-import type { DesktopApi } from "../shared/desktop-api";
+import { agentIpcChannels, workspaceIpcChannels } from "../shared/desktop-api";
+import type { AgentWorkbenchContext, DesktopApi } from "../shared/desktop-api";
 
 const desktopApi: DesktopApi = Object.freeze({
   agent: Object.freeze({
     cancel: () => ipcRenderer.invoke(agentIpcChannels.cancel) as Promise<void>,
     connect: () => ipcRenderer.invoke(agentIpcChannels.connect) as Promise<void>,
+    configureWorkbench: (context: AgentWorkbenchContext) =>
+      ipcRenderer.invoke(agentIpcChannels.configureWorkbench, context) as Promise<void>,
     prompt: (text: string) =>
       ipcRenderer.invoke(agentIpcChannels.prompt, text) as Promise<void>,
     subscribe(listener: (event: AgentEvent) => void) {
@@ -26,6 +29,11 @@ const desktopApi: DesktopApi = Object.freeze({
     electron: process.versions.electron,
     node: process.versions.node,
     platform: process.platform,
+  }),
+  workspaceStorage: Object.freeze({
+    load: () => ipcRenderer.invoke(workspaceIpcChannels.load) as Promise<unknown>,
+    save: (snapshot: WorkspaceSnapshot) =>
+      ipcRenderer.invoke(workspaceIpcChannels.save, snapshot) as Promise<void>,
   }),
 });
 

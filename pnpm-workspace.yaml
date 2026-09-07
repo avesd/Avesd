@@ -13,11 +13,13 @@ minimumReleaseAge: 4320
 catalog:
   "@agentclientprotocol/codex-acp": 1.8.0
   "@agentclientprotocol/sdk": 1.4.0
+  "@modelcontextprotocol/server": 2.0.0
   "@eslint/js": 10.0.1
   cordis: 4.0.0-rc.9
   "@types/node": 26.4.1
   "@types/react": 19.2.18
   "@types/react-dom": 19.2.5
+  zod: 4.5.4
   "@vitejs/plugin-react": 6.1.1
   "@vitest/browser-playwright": 4.1.11
   electron: 44.1.1

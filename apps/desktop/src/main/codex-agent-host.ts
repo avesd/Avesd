@@ -6,6 +6,7 @@ import { Readable, Writable } from "node:stream";
 import { AcpSessionConnection } from "@avesd/acp-client";
 import type { AcpRuntimeEvent } from "@avesd/acp-client";
 import type { AgentEvent, Dispose } from "@avesd/plugin-api";
+import type { AgentWorkbenchContext } from "../shared/desktop-api";
 
 const moduleRequire = createRequire(import.meta.url);
 
@@ -14,14 +15,23 @@ const errorMessage = (error: unknown): string =>
 
 export class CodexAgentHost {
   readonly #cwd: string;
+  readonly #mcpServerPath: string;
+  readonly #workspacePath: string;
   readonly #listeners = new Set<(event: AgentEvent) => void>();
   #child?: ChildProcessWithoutNullStreams;
   #connecting?: Promise<void>;
   #isPrompting = false;
   #session?: AcpSessionConnection;
+  #workbenchContext?: AgentWorkbenchContext;
 
-  constructor(cwd: string) {
+  constructor(cwd: string, workspacePath: string, mcpServerPath: string) {
     this.#cwd = cwd;
+    this.#workspacePath = workspacePath;
+    this.#mcpServerPath = mcpServerPath;
+  }
+
+  configureWorkbench(context: AgentWorkbenchContext): void {
+    this.#workbenchContext = context;
   }
 
   async cancel(): Promise<void> {
@@ -123,6 +133,16 @@ export class CodexAgentHost {
       this.#session = await AcpSessionConnection.connect({
         clientInfo: { name: "avesd", title: "Avesd", version: "0.1.0" },
         cwd: this.#cwd,
+        mcpServers: this.#workbenchContext ? [{
+          args: [this.#mcpServerPath],
+          command: process.execPath,
+          env: [
+            { name: "AVESD_MCP_CONTEXT", value: JSON.stringify(this.#workbenchContext) },
+            { name: "AVESD_WORKSPACE_PATH", value: this.#workspacePath },
+            { name: "ELECTRON_RUN_AS_NODE", value: "1" },
+          ],
+          name: "Avesd workspace",
+        }] : [],
         onEvent: (event) => this.#handleRuntimeEvent(event),
         stream: {
           readable: Readable.toWeb(child.stdout) as ReadableStream<Uint8Array>,

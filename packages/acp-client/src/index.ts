@@ -96,6 +96,7 @@ export interface AcpSessionConnectionOptions {
   };
   readonly cwd: string;
   readonly onEvent: (event: AcpRuntimeEvent) => void;
+  readonly mcpServers?: acp.McpServer[];
   readonly stream: AcpByteStream;
 }
 
@@ -116,7 +117,12 @@ export class AcpSessionConnection {
     const client = acp.client({ name: options.clientInfo.name })
       .onRequest(
         acp.methods.client.session.requestPermission,
-        () => ({ outcome: { outcome: "cancelled" } }),
+        ({ params }) => {
+          const allowOnce = params.options.find(({ kind }) => kind === "allow_once");
+          return params.toolCall.name?.startsWith("avesd_") && allowOnce
+            ? { outcome: { optionId: allowOnce.optionId, outcome: "selected" as const } }
+            : { outcome: { outcome: "cancelled" as const } };
+        },
       )
       .onNotification(acp.methods.client.session.update, ({ params }) => {
         const update = params.update;
@@ -143,7 +149,7 @@ export class AcpSessionConnection {
       );
       const session = await connection.agent.request(
         acp.methods.agent.session.new,
-        { cwd: options.cwd, mcpServers: [] },
+        { cwd: options.cwd, mcpServers: options.mcpServers ?? [] },
       );
 
       return new AcpSessionConnection(
