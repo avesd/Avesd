@@ -18,3 +18,19 @@ through scoped `read`, `subscribe`, and `update` operations.
 
 Shadow DOM provides style isolation, not a security sandbox. External plugin
 discovery and sandboxing remain separate runtime concerns.
+
+The desktop's trusted built-in Web page widget uses a host-managed native view
+through a desktop-only typed service. It does not add Electron objects to this
+public contract. Its temporary `avesd.web-result` output can be consumed through
+the existing input binding API; output values are read-only and are not saved.
+The host preserves mounted controllers when an unchanged binding map is loaded
+again, so unrelated layout updates do not reset live browser sessions.
+
+`WidgetMountContext.browser`, when provided by the host, is a
+`WidgetBrowserService` with `extract(inputId, fields)`, `navigate(inputId, url)`,
+and `click(inputId, selector)`. The host fixes the source instance and resolves
+an explicitly authorized target from the input name. It does not expose target
+discovery, binding administration, arbitrary scripts, or Electron handles to
+this service. The desktop currently supplies it only to its trusted built-in
+Browser controls widget. Missing grants and unsupported actions reject; a
+plugin identifier alone does not confer authority over a widget instance.

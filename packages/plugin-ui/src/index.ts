@@ -39,7 +39,15 @@ export interface WidgetDataService {
   update(inputId: string, value: JsonValue): Promise<void>;
 }
 
+/** Host-scoped browser controls. Binding names are resolved by the host, not the caller. */
+export interface WidgetBrowserService {
+  extract(inputId: string, fields: Readonly<Record<string, string>>): Promise<JsonObject>;
+  navigate(inputId: string, url: string): Promise<void>;
+  click(inputId: string, selector: string): Promise<void>;
+}
+
 export interface WidgetMountContext {
+  readonly browser?: WidgetBrowserService;
   readonly configuration: WidgetConfigurationService;
   readonly dashboardId: DashboardId;
   readonly data: WidgetDataService;

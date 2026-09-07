@@ -23,8 +23,12 @@ import type {
 } from "@avesd/workspace-model";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
+import type { BrowserControlsApi } from "../../../shared/browser-controls";
+import { WEB_PLUGIN_ID } from "../../../shared/web-surface";
+import { BrowserControlBindings } from "./BrowserControlBindings";
 
 interface DashboardShellProps {
+  readonly browserControls?: BrowserControlsApi;
   readonly dataSources: DataSourceService;
   readonly layouts: DashboardLayoutService;
   readonly scope: DashboardScope;
@@ -36,6 +40,7 @@ const EMPTY_WIDGETS: readonly ReturnType<ContributionRegistry<WidgetContribution
 const EMPTY_SOURCE_TYPES: readonly ReturnType<ContributionRegistry<DataSourceContribution>["getAll"]>[number][] = [];
 
 export const DashboardShell = ({
+  browserControls,
   dataSources,
   layouts,
   scope,
@@ -161,6 +166,7 @@ export const DashboardShell = ({
         )}
         {snapshot?.widgets.map((instance) => (
           <WidgetSurface
+            browserControls={browserControls}
             apply={apply}
             dataSources={dataSources}
             definition={resolveWidget(availableWidgets, instance)}
@@ -194,6 +200,7 @@ export const DashboardShell = ({
               </article>
             ))}
           </div>
+          {browserControls && snapshot && <BrowserControlBindings api={browserControls} widgets={snapshot.widgets} />}
           <h3>Data sources</h3>
           <div className="layout-editor-list">
             {availableSourceTypes.map(({ pluginId, value }) => pluginId && (
@@ -293,12 +300,14 @@ export const DashboardShell = ({
 };
 
 const WidgetSurface = ({
+  browserControls,
   apply,
   dataSources,
   definition,
   instance,
   isEditing,
 }: {
+  readonly browserControls?: BrowserControlsApi;
   readonly apply: (
     operations: Parameters<DashboardLayoutService["apply"]>[1]["operations"],
   ) => Promise<void>;
@@ -369,6 +378,7 @@ const WidgetSurface = ({
     <article className="dashboard-widget" style={placementStyle}>
       {definition
         ? <MountedWidget
+            browserControls={browserControls}
             apply={apply}
             dataSources={dataSources}
             definition={definition}
@@ -414,11 +424,13 @@ const WidgetSurface = ({
 };
 
 const MountedWidget = ({
+  browserControls,
   apply,
   dataSources,
   definition,
   instance,
 }: {
+  readonly browserControls?: BrowserControlsApi;
   readonly apply: (
     operations: Parameters<DashboardLayoutService["apply"]>[1]["operations"],
   ) => Promise<void>;
@@ -447,6 +459,7 @@ const MountedWidget = ({
       return;
     }
     const root = host.shadowRoot ?? host.attachShadow({ mode: "open" });
+    const activeBindings = JSON.parse(bindingsKey) as WidgetInstance["bindings"];
     const abortController = new AbortController();
     const showError = () => {
       root.replaceChildren();
@@ -457,8 +470,12 @@ const MountedWidget = ({
     };
 
     try {
-      const activeBindings = JSON.parse(bindingsKey) as WidgetInstance["bindings"];
       const controller = definition.mount(root, {
+        browser: browserControls && instance.pluginId === WEB_PLUGIN_ID && instance.widgetTypeId === "controls" ? {
+          extract: async (inputId, fields) => await browserControls.invoke(instanceId, inputId, { type: "extract", fields }) ?? {},
+          navigate: async (inputId, url) => { await browserControls.invoke(instanceId, inputId, { type: "navigate", url }); },
+          click: async (inputId, selector) => { await browserControls.invoke(instanceId, inputId, { type: "click", selector }); },
+        } : undefined,
         configuration: {
           update: (configuration) => applyRef.current([{
             configuration,
@@ -509,7 +526,7 @@ const MountedWidget = ({
         root.replaceChildren();
       }
     };
-  }, [bindingsKey, dashboardId, dataSources, definition, instanceId, workspaceId]);
+  }, [bindingsKey, browserControls, dashboardId, dataSources, definition, instanceId, instance.pluginId, instance.widgetTypeId, workspaceId]);
 
   useEffect(() => {
     try {

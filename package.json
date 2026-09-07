@@ -14,6 +14,7 @@
     "lint": "turbo lint && pnpm validate-repository-boundaries",
     "self-update": "corepack use pnpm@latest",
     "test": "turbo test",
+    "test:electron": "pnpm build && pnpm --filter @avesd/desktop test:electron",
     "ud": "pnpm update -r && pnpm dedupe",
     "update-all": "pnpm update -r --latest --include-github-actions && pnpm dedupe",
     "validate-repository-boundaries": "node --check scripts/validate-repository-boundaries.mjs && node scripts/validate-repository-boundaries.mjs",

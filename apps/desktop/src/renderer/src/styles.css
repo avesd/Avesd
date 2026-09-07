@@ -430,7 +430,7 @@ button {
   inset-inline-end: 16px;
   z-index: 8;
   width: min(280px, calc(100vw - 32px));
-  max-height: calc(100vh - 32px);
+  max-height: calc(100vh - 96px);
   overflow: auto;
   padding: 15px;
   border: 1px solid rgb(44 48 41 / 12%);
@@ -558,6 +558,7 @@ button {
 }
 
 .binding-editor select,
+.binding-editor input:not([type="checkbox"]),
 .configuration-editor input:not([type="checkbox"]) {
   width: 100%;
   padding: 7px 8px;
@@ -566,6 +567,17 @@ button {
   color: #464b43;
   background: #fff;
   font-size: 9px;
+}
+
+.binding-editor .browser-control-permission {
+  display: flex;
+  align-items: center;
+}
+
+.binding-editor form {
+  margin-block: 10px;
+  padding-block: 10px;
+  border-block-start: 1px solid rgb(48 53 46 / 12%);
 }
 
 .configuration-editor input[type="checkbox"] {

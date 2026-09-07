@@ -1,7 +1,9 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 import type { AgentEvent } from "@avesd/plugin-api";
-import type { WorkspaceSnapshot } from "@avesd/workspace-model";
+import type { JsonObject, WorkspaceSnapshot } from "@avesd/workspace-model";
+import { browserControlsChannel } from "../shared/browser-controls";
+import type { BrowserBinding, BrowserControlAction, BrowserControlsCommand } from "../shared/browser-controls";
 
 import { agentIpcChannels, workspaceIpcChannels } from "../shared/desktop-api";
 import type { AgentWorkbenchContext, DesktopApi } from "../shared/desktop-api";
@@ -9,6 +11,13 @@ import { webSurfaceChannel, webSurfaceEventChannel } from "../shared/web-surface
 import type { WebSurfaceCommand, WebSurfaceState } from "../shared/web-surface";
 
 const desktopApi: DesktopApi = Object.freeze({
+  browserControls: Object.freeze({
+    list: () => ipcRenderer.invoke(browserControlsChannel, { type: "list" }) as Promise<readonly BrowserBinding[]>,
+    bind: (binding: Extract<BrowserControlsCommand, { type: "bind" }>) => ipcRenderer.invoke(browserControlsChannel, binding) as Promise<void>,
+    unbind: (sourceId: string, inputId: string) => ipcRenderer.invoke(browserControlsChannel, { type: "unbind", sourceId, inputId }) as Promise<void>,
+    invoke: (sourceId: string, inputId: string, action: BrowserControlAction) =>
+      ipcRenderer.invoke(browserControlsChannel, { type: "invoke", sourceId, inputId, action }) as Promise<JsonObject | null>,
+  }),
   web: Object.freeze({
     command: (command: WebSurfaceCommand) =>
       ipcRenderer.invoke(webSurfaceChannel, command) as Promise<WebSurfaceState>,

@@ -11,6 +11,7 @@ import type {
 import { DashboardShell } from "../components/DashboardShell";
 import { mainViewContribution } from "../workbench/types";
 import type { WorkbenchView } from "../workbench/types";
+import type { BrowserControlsApi } from "../../../shared/browser-controls";
 
 export const createDashboardPlugin = (
   layouts: DashboardLayoutService,
@@ -18,10 +19,12 @@ export const createDashboardPlugin = (
   widgets: ContributionRegistry<WidgetContribution>,
   dataSources: DataSourceService,
   sourceTypes: ContributionRegistry<DataSourceContribution>,
+  browserControls?: BrowserControlsApi,
 ): PluginDefinition => {
   const dashboardView: WorkbenchView = {
     render: () => (
       <DashboardShell
+        browserControls={browserControls}
         dataSources={dataSources}
         layouts={layouts}
         scope={scope}

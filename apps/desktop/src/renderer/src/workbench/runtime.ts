@@ -119,6 +119,7 @@ export const startWorkbench = async (): Promise<void> => {
     dashboardWidgetRegistry,
     dataSources,
     dataSourceRegistry,
+    window.avesd.browserControls,
   );
   await pluginHost.replace(counterPlugin);
   await pluginHost.replace(dashboardPlugin);

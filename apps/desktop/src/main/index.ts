@@ -12,12 +12,16 @@ import { CodexAgentHost } from "./codex-agent-host";
 import { WorkspaceFile } from "./workspace-file";
 import { WebSurfaceManager } from "./web-surface-manager";
 import { parseWebCommand, webSurfaceChannel, webSurfaceEventChannel } from "../shared/web-surface";
+import { browserControlsChannel, parseBrowserControls } from "../shared/browser-controls";
+import { BrowserBindings } from "./browser-bindings";
+import { browserBindingFile } from "./browser-binding-file";
 
 let agentHost: CodexAgentHost | undefined;
 let mainWindow: BrowserWindow | undefined;
 let workspaceFile: WorkspaceFile | undefined;
 let workspacePath: string | undefined;
 let webSurfaces: WebSurfaceManager | undefined;
+let browserBindings: BrowserBindings | undefined;
 
 const isTrustedExternalUrl = (url: string): boolean => {
   try {
@@ -110,6 +114,22 @@ ipcMain.handle(webSurfaceChannel, (event, input: unknown) => {
   }
   return webSurfaces.command(parseWebCommand(input));
 });
+ipcMain.handle(browserControlsChannel, async (event, input: unknown) => {
+  hostForEvent(event);
+  if (event.senderFrame !== mainWindow?.webContents.mainFrame || !browserBindings || !webSurfaces) {
+    throw new Error("Browser controls require the host main frame.");
+  }
+  const command = parseBrowserControls(input);
+  const snapshot = await workspaceFile?.load();
+  if (!snapshot) throw new Error("Workspace is unavailable.");
+  await browserBindings.prune(snapshot);
+  switch (command.type) {
+    case "list": return browserBindings.list(snapshot);
+    case "bind": return browserBindings.bind(command, snapshot);
+    case "unbind": return browserBindings.unbind(command.sourceId, command.inputId);
+    case "invoke": return webSurfaces.control(command, browserBindings);
+  }
+});
 ipcMain.handle(agentIpcChannels.prompt, (event, input: unknown) =>
   hostForEvent(event).prompt(parseAgentPrompt(input)));
 ipcMain.handle(agentIpcChannels.cancel, (event) => hostForEvent(event).cancel());
@@ -132,9 +152,12 @@ ipcMain.handle(workspaceIpcChannels.save, (event, snapshot: unknown) => {
   return workspaceFile.save(snapshot);
 });
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   workspacePath = join(app.getPath("userData"), "workspace-v1.json");
   workspaceFile = new WorkspaceFile(workspacePath);
+  // Fail closed for browser controls without preventing the local dashboard from opening.
+  browserBindings = await BrowserBindings.open(browserBindingFile(join(app.getPath("userData"), "browser-bindings-v1.json")))
+    .catch(() => undefined);
   createMainWindow();
 
   app.on("activate", () => {
