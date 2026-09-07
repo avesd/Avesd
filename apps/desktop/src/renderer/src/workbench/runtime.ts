@@ -24,6 +24,8 @@ import { agentPlugin } from "../plugins/agent-plugin";
 import { counterPlugin } from "../plugins/counter-plugin";
 import { createDashboardPlugin } from "../plugins/dashboard-plugin";
 import { welcomePlugin } from "../plugins/welcome-plugin";
+import { createWebPlugin } from "../plugins/web-plugin";
+import { WebResults } from "./web-results";
 import {
   agentOverlayContribution,
   mainViewContribution,
@@ -91,8 +93,8 @@ export const startWorkbench = async (): Promise<void> => {
       { id: dashboardScope.dashboardId, name: "My dashboard", viewState: {} },
     );
   }
-  const dashboardLayouts = new DashboardLayoutCoordinator(workspaceRepository, resolveWidget);
-  const dataSources = new WorkspaceDataCoordinator(
+  const webResults = new WebResults(window.avesd.web, workspaceRepository);
+  const dataSources = webResults.wrap(new WorkspaceDataCoordinator(
     workspaceRepository,
     (pluginId, sourceTypeId) => {
       const contribution = dataSourceRegistry.getAll(dataSourceContribution.id).find(
@@ -108,7 +110,9 @@ export const startWorkbench = async (): Promise<void> => {
         sourceTypeId: contribution.value.sourceTypeId,
       } : undefined;
     },
-  );
+  ));
+  const dashboardLayouts = new DashboardLayoutCoordinator(workspaceRepository, resolveWidget,
+    (scope, id) => dataSources.read(scope, id));
   const dashboardPlugin = createDashboardPlugin(
     dashboardLayouts,
     dashboardScope,
@@ -119,6 +123,7 @@ export const startWorkbench = async (): Promise<void> => {
   await pluginHost.replace(counterPlugin);
   await pluginHost.replace(dashboardPlugin);
   await pluginHost.replace(welcomePlugin);
+  await pluginHost.replace(createWebPlugin(window.avesd.web, webResults));
   await window.avesd.agent.configureWorkbench({
     dataSourceDefinitions: dataSourceRegistry.getAll(dataSourceContribution.id).flatMap(
       ({ pluginId, value }) => pluginId ? [{

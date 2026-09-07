@@ -457,6 +457,7 @@ const MountedWidget = ({
     };
 
     try {
+      const activeBindings = JSON.parse(bindingsKey) as WidgetInstance["bindings"];
       const controller = definition.mount(root, {
         configuration: {
           update: (configuration) => applyRef.current([{
@@ -468,7 +469,7 @@ const MountedWidget = ({
         dashboardId,
         data: {
           async read(inputId) {
-            const ids = bindings[inputId] ?? [];
+            const ids = activeBindings[inputId] ?? [];
             const scope: DashboardScope = { dashboardId, workspaceId };
             return Promise.all(ids.map(async (id) => (
               await dataSources.read(scope, id)
@@ -478,7 +479,7 @@ const MountedWidget = ({
             return dataSources.subscribe(listener);
           },
           async update(inputId, value) {
-            const ids = bindings[inputId] ?? [];
+            const ids = activeBindings[inputId] ?? [];
             if (ids.length !== 1 || !ids[0]) {
               throw new Error(`widget input must have exactly one data source: ${inputId}`);
             }
@@ -508,7 +509,7 @@ const MountedWidget = ({
         root.replaceChildren();
       }
     };
-  }, [bindings, bindingsKey, dashboardId, dataSources, definition, instanceId, workspaceId]);
+  }, [bindingsKey, dashboardId, dataSources, definition, instanceId, workspaceId]);
 
   useEffect(() => {
     try {

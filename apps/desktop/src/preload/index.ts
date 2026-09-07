@@ -5,8 +5,19 @@ import type { WorkspaceSnapshot } from "@avesd/workspace-model";
 
 import { agentIpcChannels, workspaceIpcChannels } from "../shared/desktop-api";
 import type { AgentWorkbenchContext, DesktopApi } from "../shared/desktop-api";
+import { webSurfaceChannel, webSurfaceEventChannel } from "../shared/web-surface";
+import type { WebSurfaceCommand, WebSurfaceState } from "../shared/web-surface";
 
 const desktopApi: DesktopApi = Object.freeze({
+  web: Object.freeze({
+    command: (command: WebSurfaceCommand) =>
+      ipcRenderer.invoke(webSurfaceChannel, command) as Promise<WebSurfaceState>,
+    subscribe(listener: () => void) {
+      const handler = () => listener();
+      ipcRenderer.on(webSurfaceEventChannel, handler);
+      return () => { ipcRenderer.off(webSurfaceEventChannel, handler); };
+    },
+  }),
   agent: Object.freeze({
     cancel: () => ipcRenderer.invoke(agentIpcChannels.cancel) as Promise<void>,
     connect: () => ipcRenderer.invoke(agentIpcChannels.connect) as Promise<void>,

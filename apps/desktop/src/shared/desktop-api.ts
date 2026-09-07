@@ -1,4 +1,5 @@
 import type { AgentService } from "@avesd/plugin-api";
+import type { WebSurfaceApi } from "./web-surface";
 import type {
   DashboardScope,
   DataSourceDefinition,
@@ -15,6 +16,7 @@ export interface DesktopRuntime {
 
 export interface DesktopApi {
   readonly agent: DesktopAgentApi;
+  readonly web: WebSurfaceApi;
   readonly runtime: DesktopRuntime;
   readonly workspaceStorage: WorkspaceStorageApi;
 }

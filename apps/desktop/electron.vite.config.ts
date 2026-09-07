@@ -5,6 +5,7 @@ export default defineConfig({
   main: {
     build: {
       rollupOptions: {
+        external: ["electron"],
         input: {
           index: "src/main/index.ts",
           "workspace-mcp": "src/main/workspace-mcp.ts",

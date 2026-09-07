@@ -10,11 +10,14 @@ import {
 import type { AgentWorkbenchContext } from "../shared/desktop-api";
 import { CodexAgentHost } from "./codex-agent-host";
 import { WorkspaceFile } from "./workspace-file";
+import { WebSurfaceManager } from "./web-surface-manager";
+import { parseWebCommand, webSurfaceChannel, webSurfaceEventChannel } from "../shared/web-surface";
 
 let agentHost: CodexAgentHost | undefined;
 let mainWindow: BrowserWindow | undefined;
 let workspaceFile: WorkspaceFile | undefined;
 let workspacePath: string | undefined;
+let webSurfaces: WebSurfaceManager | undefined;
 
 const isTrustedExternalUrl = (url: string): boolean => {
   try {
@@ -51,6 +54,12 @@ const createMainWindow = (): BrowserWindow => {
   });
 
   window.webContents.on("will-navigate", (event) => event.preventDefault());
+
+  webSurfaces = new WebSurfaceManager(window, () => workspaceFile!.load(), () => {
+    if (!window.isDestroyed()) window.webContents.send(webSurfaceEventChannel);
+  });
+  window.on("close", () => webSurfaces?.dispose());
+  window.webContents.on("render-process-gone", () => webSurfaces?.dispose());
 
   agentHost?.dispose();
   if (!workspacePath) {
@@ -94,6 +103,13 @@ const hostForEvent = (event: IpcMainInvokeEvent): CodexAgentHost => {
 };
 
 ipcMain.handle(agentIpcChannels.connect, (event) => hostForEvent(event).connect());
+ipcMain.handle(webSurfaceChannel, (event, input: unknown) => {
+  hostForEvent(event);
+  if (event.senderFrame !== mainWindow?.webContents.mainFrame || !webSurfaces) {
+    throw new Error("Web commands require the host main frame.");
+  }
+  return webSurfaces.command(parseWebCommand(input));
+});
 ipcMain.handle(agentIpcChannels.prompt, (event, input: unknown) =>
   hostForEvent(event).prompt(parseAgentPrompt(input)));
 ipcMain.handle(agentIpcChannels.cancel, (event) => hostForEvent(event).cancel());

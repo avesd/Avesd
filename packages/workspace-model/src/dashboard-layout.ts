@@ -132,6 +132,8 @@ export class DashboardLayoutCoordinator implements DashboardLayoutService {
   constructor(
     repository: WorkspaceRepository,
     resolveWidget: WidgetDefinitionResolver,
+    private readonly readBindingSource: WorkspaceRepository["readDataSource"] =
+      (scope, id) => repository.readDataSource(scope, id),
   ) {
     this.#repository = repository;
     this.#resolveWidget = resolveWidget;
@@ -214,7 +216,7 @@ export class DashboardLayoutCoordinator implements DashboardLayoutService {
             );
           }
           const sources = await Promise.all(operation.dataSourceIds.map(
-            (dataSourceId) => this.#repository.readDataSource(scope, dataSourceId),
+            (dataSourceId) => this.readBindingSource(scope, dataSourceId),
           ));
           for (const source of sources) {
             const visible = source.scope.kind === "workspace"
