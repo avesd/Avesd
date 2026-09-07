@@ -1,5 +1,12 @@
-import { app, BrowserWindow, shell } from "electron";
+import { app, BrowserWindow, ipcMain, shell } from "electron";
+import type { IpcMainInvokeEvent } from "electron";
 import { join } from "node:path";
+
+import { agentIpcChannels, parseAgentPrompt } from "../shared/desktop-api";
+import { CodexAgentHost } from "./codex-agent-host";
+
+let agentHost: CodexAgentHost | undefined;
+let mainWindow: BrowserWindow | undefined;
 
 const isTrustedExternalUrl = (url: string): boolean => {
   try {
@@ -37,6 +44,23 @@ const createMainWindow = (): BrowserWindow => {
 
   window.webContents.on("will-navigate", (event) => event.preventDefault());
 
+  agentHost?.dispose();
+  agentHost = new CodexAgentHost(process.cwd());
+  const unsubscribe = agentHost.subscribe((event) => {
+    if (!window.isDestroyed()) {
+      window.webContents.send(agentIpcChannels.event, event);
+    }
+  });
+  window.once("closed", () => {
+    unsubscribe();
+    if (mainWindow === window) {
+      agentHost?.dispose();
+      agentHost = undefined;
+      mainWindow = undefined;
+    }
+  });
+  mainWindow = window;
+
   if (process.env.ELECTRON_RENDERER_URL) {
     void window.loadURL(process.env.ELECTRON_RENDERER_URL);
   } else {
@@ -45,6 +69,19 @@ const createMainWindow = (): BrowserWindow => {
 
   return window;
 };
+
+const hostForEvent = (event: IpcMainInvokeEvent): CodexAgentHost => {
+  if (!mainWindow || event.sender !== mainWindow.webContents || !agentHost) {
+    throw new Error("Agent IPC request did not originate from the active window");
+  }
+
+  return agentHost;
+};
+
+ipcMain.handle(agentIpcChannels.connect, (event) => hostForEvent(event).connect());
+ipcMain.handle(agentIpcChannels.prompt, (event, input: unknown) =>
+  hostForEvent(event).prompt(parseAgentPrompt(input)));
+ipcMain.handle(agentIpcChannels.cancel, (event) => hostForEvent(event).cancel());
 
 app.whenReady().then(() => {
   createMainWindow();
@@ -60,4 +97,8 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+app.on("before-quit", () => {
+  agentHost?.dispose();
 });

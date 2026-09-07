@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatRuntimeSummary } from "./desktop-api";
+import { formatRuntimeSummary, parseAgentPrompt } from "./desktop-api";
 
 describe("formatRuntimeSummary", () => {
   it("formats the Electron version and platform", () => {
@@ -11,5 +11,10 @@ describe("formatRuntimeSummary", () => {
       platform: "darwin",
     })).toBe("Electron 43.4.1 · darwin");
   });
-});
 
+  it("validates and normalizes agent prompts at the IPC boundary", () => {
+    expect(parseAgentPrompt("  hello  ")).toBe("hello");
+    expect(() => parseAgentPrompt("   ")).toThrow("cannot be empty");
+    expect(() => parseAgentPrompt({ text: "hello" })).toThrow("must be a string");
+  });
+});

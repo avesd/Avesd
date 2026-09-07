@@ -22,7 +22,40 @@ export interface ExternalOpenService {
   openUrl(url: string): Promise<void>;
 }
 
+export type AgentConnectionStatus =
+  | "disconnected"
+  | "connecting"
+  | "connected"
+  | "error";
+
+export type AgentEvent =
+  | {
+      readonly message?: string;
+      readonly status: AgentConnectionStatus;
+      readonly type: "status";
+    }
+  | {
+      readonly text: string;
+      readonly type: "messageChunk";
+    }
+  | {
+      readonly title: string;
+      readonly type: "activity";
+    }
+  | {
+      readonly stopReason: string;
+      readonly type: "turnComplete";
+    };
+
+export interface AgentService {
+  cancel(): Promise<void>;
+  connect(): Promise<void>;
+  prompt(text: string): Promise<void>;
+  subscribe(listener: (event: AgentEvent) => void): Dispose;
+}
+
 export interface PluginServices {
+  readonly agent: AgentService;
   readonly commands: CommandService;
   readonly externalOpen: ExternalOpenService;
   readonly storage: PluginStorage;
