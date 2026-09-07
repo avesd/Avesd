@@ -8,6 +8,9 @@ out/
 release/
 *.tsbuildinfo
 
+# Temp
+apps/desktop/.vitest-attachments
+
 # Test and tool output
 coverage/
 .turbo/
