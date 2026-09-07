@@ -11,8 +11,8 @@ export default defineConfig({
       {
         test: {
           environment: "node",
-          exclude: ["src/**/*.browser.test.ts"],
-          include: ["src/**/*.test.ts"],
+          exclude: ["src/**/*.browser.test.{ts,tsx}"],
+          include: ["src/**/*.test.{ts,tsx}"],
           name: "unit",
         },
       },
@@ -24,7 +24,7 @@ export default defineConfig({
             instances: [{ browser: "chromium" }],
             provider: playwright(),
           },
-          include: ["src/**/*.browser.test.ts"],
+          include: ["src/**/*.browser.test.{ts,tsx}"],
           name: "browser",
         },
       },

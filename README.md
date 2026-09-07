@@ -54,6 +54,8 @@ Before the first browser test run, install Chromium with
 - `packages/kernel` — Cordis-backed plugin lifecycle adapter and contribution
   registries.
 - `packages/plugin-api` — stable contracts implemented by plugins.
+- `packages/workspace-model` — runtime-neutral workspace, dashboard, widget, and
+  data-source ownership contracts.
 - `.agents/common-skills-policy.md` and `.agents/audit-policy.md` — local
   repository policy for globally installed shared skills.
 - `working` — non-authoritative audits, plans, notes, and archived project
@@ -77,9 +79,27 @@ service scopes to the plugin identifier before activation, so plugin code cannot
 select another plugin's service namespace. Concrete persistence and privileged
 desktop implementations remain outside the runtime-neutral public API.
 
+Product data has a separate scope hierarchy. A workspace owns dashboards and
+shared data sources; a dashboard owns its widget instances and view state.
+Deleting a dashboard therefore removes its widgets without deleting shared
+workspace data. Repository operations carry an explicit workspace scope, while
+the kernel-injected plugin identifier remains an orthogonal security namespace.
+
+Each dashboard uses a host-owned 24-column logical grid with unbounded rows.
+Plugins contribute widget definitions with fixed or ranged size policies; the
+host records the contributing plugin identity and validates every placement.
+Manual controls and agents share one transactional layout service, so invalid,
+overlapping, out-of-bounds, or stale layout batches are rejected before storage.
+
 The renderer welcome screen is the first built-in UI plugin and participates in
 Vite hot module replacement. External plugin discovery, compilation, sandboxing,
 and persisted installation are intentionally not implemented yet.
+
+The desktop also includes a minimal built-in agent overlay plugin. It opens from
+the top-right corner and talks to a main-process agent service through typed IPC.
+The first provider implementation launches the pinned `codex-acp` adapter over
+stdio and creates a local Codex session. It starts in read-only mode and cancels
+permission requests until the workbench has an explicit approval interface.
 
 AI harnesses connect through ACP. The client package owns protocol lifecycle and
 capability negotiation while concrete process transports and account
