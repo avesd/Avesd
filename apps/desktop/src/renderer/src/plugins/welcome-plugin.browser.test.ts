@@ -5,12 +5,13 @@ import {
 } from "@avesd/kernel";
 import { afterEach, describe, expect, it } from "vitest";
 import { page } from "vitest/browser";
+import { createRoot } from "react-dom/client";
 
-import { mainViewContribution } from "../workbench/types";
-import type { WorkbenchView } from "../workbench/types";
+import { dashboardWidgetContribution } from "../workbench/types";
+import type { DashboardWidget } from "../workbench/types";
 import { welcomePlugin } from "./welcome-plugin";
 
-describe("welcome UI plugin", () => {
+describe("welcome widget plugin", () => {
   afterEach(() => {
     document.body.replaceChildren();
   });
@@ -28,27 +29,28 @@ describe("welcome UI plugin", () => {
       },
     });
 
-    const views = new ContributionRegistry<WorkbenchView>();
+    const widgets = new ContributionRegistry<DashboardWidget>();
     const contributions = new ContributionBroker();
-    contributions.register(mainViewContribution, views);
+    contributions.register(dashboardWidgetContribution, widgets);
     const host = new PluginHost({ contributions });
     await host.replace(welcomePlugin);
 
-    const view = views.get(mainViewContribution.id);
-    expect(view).toBeDefined();
+    const widget = widgets.getAll(dashboardWidgetContribution.id)[0];
+    expect(widget?.pluginId).toBe("avesd.builtin.welcome");
 
     const container = document.createElement("div");
     document.body.append(container);
-    const disposeView = view?.mount(container);
+    const root = createRoot(container);
+    root.render(widget?.value.render({ configuration: {}, size: { height: 6, width: 12 } }));
 
     await expect.element(page.getByRole("heading", {
-      name: "Your workspace, rewritten live.",
+      name: "Your space, assembled your way.",
     })).toBeVisible();
 
-    disposeView?.();
+    root.unmount();
     expect(container.childElementCount).toBe(0);
 
     await host.remove("avesd.builtin.welcome");
-    expect(views.get(mainViewContribution.id)).toBeUndefined();
+    expect(widgets.getAll(dashboardWidgetContribution.id)).toEqual([]);
   });
 });
