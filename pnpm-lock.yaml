@@ -107,6 +107,12 @@ importers:
       '@avesd/plugin-api':
         specifier: workspace:*
         version: link:../../packages/plugin-api
+      '@avesd/plugin-data':
+        specifier: workspace:*
+        version: link:../../packages/plugin-data
+      '@avesd/plugin-ui':
+        specifier: workspace:*
+        version: link:../../packages/plugin-ui
       '@avesd/workspace-model':
         specifier: workspace:*
         version: link:../../packages/workspace-model

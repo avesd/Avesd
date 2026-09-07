@@ -3,12 +3,16 @@ import {
   ContributionRegistry,
   PluginHost,
 } from "@avesd/kernel";
+import { dashboardWidgetContribution } from "@avesd/plugin-ui";
+import type { WidgetContribution } from "@avesd/plugin-ui";
+import type {
+  DashboardId,
+  WidgetInstanceId,
+  WorkspaceId,
+} from "@avesd/workspace-model";
 import { afterEach, describe, expect, it } from "vitest";
 import { page } from "vitest/browser";
-import { createRoot } from "react-dom/client";
 
-import { dashboardWidgetContribution } from "../workbench/types";
-import type { DashboardWidget } from "../workbench/types";
 import { welcomePlugin } from "./welcome-plugin";
 
 describe("welcome widget plugin", () => {
@@ -29,7 +33,7 @@ describe("welcome widget plugin", () => {
       },
     });
 
-    const widgets = new ContributionRegistry<DashboardWidget>();
+    const widgets = new ContributionRegistry<WidgetContribution>();
     const contributions = new ContributionBroker();
     contributions.register(dashboardWidgetContribution, widgets);
     const host = new PluginHost({ contributions });
@@ -39,16 +43,30 @@ describe("welcome widget plugin", () => {
     expect(widget?.pluginId).toBe("avesd.builtin.welcome");
 
     const container = document.createElement("div");
+    container.style.width = "480px";
+    container.style.height = "180px";
     document.body.append(container);
-    const root = createRoot(container);
-    root.render(widget?.value.render({ configuration: {}, size: { height: 6, width: 12 } }));
+    const shadowRoot = container.attachShadow({ mode: "open" });
+    const controller = widget?.value.mount(shadowRoot, {
+      configuration: { async update() {} },
+      dashboardId: "dashboard" as DashboardId,
+      data: {
+        async read() { return []; },
+        subscribe() { return () => undefined; },
+        async update() {},
+      },
+      instanceId: "widget" as WidgetInstanceId,
+      signal: new AbortController().signal,
+      workspaceId: "workspace" as WorkspaceId,
+    });
+    controller?.update({ configuration: {}, size: { height: 6, width: 12 } });
 
     await expect.element(page.getByRole("heading", {
       name: "Your space, assembled your way.",
     })).toBeVisible();
 
-    root.unmount();
-    expect(container.childElementCount).toBe(0);
+    controller?.dispose();
+    expect(shadowRoot.childElementCount).toBe(0);
 
     await host.remove("avesd.builtin.welcome");
     expect(widgets.getAll(dashboardWidgetContribution.id)).toEqual([]);

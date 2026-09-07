@@ -4,9 +4,14 @@ import {
   ContributionRegistry,
   PluginHost,
 } from "@avesd/kernel";
+import { dashboardWidgetContribution } from "@avesd/plugin-ui";
+import { dataSourceContribution } from "@avesd/plugin-data";
+import type { DataSourceContribution } from "@avesd/plugin-data";
+import type { WidgetContribution } from "@avesd/plugin-ui";
 import {
   DashboardLayoutCoordinator,
-  InMemoryWorkspaceRepository,
+  PersistentWorkspaceRepository,
+  WorkspaceDataCoordinator,
 } from "@avesd/workspace-model";
 import type {
   DashboardId,
@@ -16,30 +21,32 @@ import type {
 } from "@avesd/workspace-model";
 
 import { agentPlugin } from "../plugins/agent-plugin";
+import { counterPlugin } from "../plugins/counter-plugin";
 import { createDashboardPlugin } from "../plugins/dashboard-plugin";
 import { welcomePlugin } from "../plugins/welcome-plugin";
 import {
   agentOverlayContribution,
-  dashboardWidgetContribution,
   mainViewContribution,
 } from "./types";
-import type { DashboardWidget, WorkbenchView } from "./types";
+import type { WorkbenchView } from "./types";
 
 export const mainViewRegistry = new ContributionRegistry<WorkbenchView>();
 export const agentOverlayRegistry = new ContributionRegistry<WorkbenchView>();
-export const dashboardWidgetRegistry = new ContributionRegistry<DashboardWidget>();
+export const dashboardWidgetRegistry = new ContributionRegistry<WidgetContribution>();
+export const dataSourceRegistry = new ContributionRegistry<DataSourceContribution>();
 const contributions = new ContributionBroker();
 contributions.register(mainViewContribution, mainViewRegistry);
 contributions.register(agentOverlayContribution, agentOverlayRegistry);
 contributions.register(dashboardWidgetContribution, dashboardWidgetRegistry);
+contributions.register(dataSourceContribution, dataSourceRegistry);
 const capabilities = new CapabilityBroker(
   (pluginId, capability) =>
     pluginId === agentPlugin.id && capability === "agent",
 );
 capabilities.register("agent", () => window.avesd.agent);
 export const pluginHost = new PluginHost({ capabilities, contributions });
+let disposeWorkspaceRefresh: (() => void | Promise<void>) | undefined;
 
-const workspaceRepository = new InMemoryWorkspaceRepository();
 const dashboardScope: DashboardScope = {
   dashboardId: "local-dashboard" as DashboardId,
   workspaceId: "local-workspace" as WorkspaceId,
@@ -53,27 +60,84 @@ const resolveWidget = (
     .find(({ pluginId: ownerId, value }) =>
       ownerId === pluginId && value.widgetTypeId === widgetTypeId);
   return contribution?.pluginId
-    ? { ...contribution.value, pluginId: contribution.pluginId }
+    ? {
+        configurationVersion: contribution.value.configuration.version,
+        defaultConfiguration: contribution.value.configuration.default,
+        defaultSize: contribution.value.sizing.default,
+        displayName: contribution.value.displayName,
+        inputs: contribution.value.inputs ?? [],
+        pluginId: contribution.pluginId,
+        sizePolicy: contribution.value.sizing.policy,
+        widgetTypeId: contribution.value.widgetTypeId,
+      }
     : undefined;
 };
-const dashboardLayouts = new DashboardLayoutCoordinator(workspaceRepository, resolveWidget);
-const dashboardPlugin = createDashboardPlugin(
-  dashboardLayouts,
-  dashboardScope,
-  dashboardWidgetRegistry,
-);
 
 export const startWorkbench = async (): Promise<void> => {
-  await workspaceRepository.createWorkspace({
-    id: dashboardScope.workspaceId,
-    name: "Local workspace",
+  const workspaceRepository = await PersistentWorkspaceRepository.open(window.avesd.workspaceStorage);
+  disposeWorkspaceRefresh?.();
+  disposeWorkspaceRefresh = window.avesd.agent.subscribe((event) => {
+    if (event.type === "turnComplete") {
+      void workspaceRepository.refresh();
+    }
   });
-  await workspaceRepository.createDashboard(
-    { workspaceId: dashboardScope.workspaceId },
-    { id: dashboardScope.dashboardId, name: "My dashboard", viewState: {} },
+  if ((await workspaceRepository.listWorkspaces()).length === 0) {
+    await workspaceRepository.createWorkspace({
+      id: dashboardScope.workspaceId,
+      name: "Local workspace",
+    });
+    await workspaceRepository.createDashboard(
+      { workspaceId: dashboardScope.workspaceId },
+      { id: dashboardScope.dashboardId, name: "My dashboard", viewState: {} },
+    );
+  }
+  const dashboardLayouts = new DashboardLayoutCoordinator(workspaceRepository, resolveWidget);
+  const dataSources = new WorkspaceDataCoordinator(
+    workspaceRepository,
+    (pluginId, sourceTypeId) => {
+      const contribution = dataSourceRegistry.getAll(dataSourceContribution.id).find(
+        ({ pluginId: ownerId, value }) =>
+          ownerId === pluginId && value.sourceTypeId === sourceTypeId,
+      );
+      return contribution?.pluginId ? {
+        configuration: contribution.value.configuration.default,
+        dataType: contribution.value.dataType,
+        displayName: contribution.value.displayName,
+        initialValue: contribution.value.initialValue,
+        pluginId: contribution.pluginId,
+        sourceTypeId: contribution.value.sourceTypeId,
+      } : undefined;
+    },
   );
+  const dashboardPlugin = createDashboardPlugin(
+    dashboardLayouts,
+    dashboardScope,
+    dashboardWidgetRegistry,
+    dataSources,
+    dataSourceRegistry,
+  );
+  await pluginHost.replace(counterPlugin);
   await pluginHost.replace(dashboardPlugin);
   await pluginHost.replace(welcomePlugin);
+  await window.avesd.agent.configureWorkbench({
+    dataSourceDefinitions: dataSourceRegistry.getAll(dataSourceContribution.id).flatMap(
+      ({ pluginId, value }) => pluginId ? [{
+        configuration: value.configuration.default,
+        dataType: value.dataType,
+        displayName: value.displayName,
+        initialValue: value.initialValue,
+        pluginId,
+        sourceTypeId: value.sourceTypeId,
+      }] : [],
+    ),
+    scope: dashboardScope,
+    widgetDefinitions: dashboardWidgetRegistry.getAll(dashboardWidgetContribution.id).flatMap(
+      ({ pluginId, value }) => {
+        const definition = pluginId ? resolveWidget(pluginId, value.widgetTypeId) : undefined;
+        return definition ? [definition] : [];
+      },
+    ),
+  });
   await pluginHost.replace(agentPlugin);
 };
 
@@ -84,14 +148,6 @@ if (import.meta.hot) {
     }
   });
 
-  import.meta.hot.accept("../plugins/dashboard-plugin", () => {
-    void pluginHost.replace(createDashboardPlugin(
-      dashboardLayouts,
-      dashboardScope,
-      dashboardWidgetRegistry,
-    ));
-  });
-
   import.meta.hot.accept("../plugins/agent-plugin", (module) => {
     if (module) {
       void pluginHost.replace(module.agentPlugin);
@@ -99,6 +155,7 @@ if (import.meta.hot) {
   });
 
   import.meta.hot.dispose(() => {
+    void disposeWorkspaceRefresh?.();
     void pluginHost.dispose();
   });
 }

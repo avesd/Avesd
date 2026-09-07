@@ -162,7 +162,7 @@ export const AgentDock = ({ service }: { readonly service: AgentService }) => {
           <div className="agent-empty-state">
             <span aria-hidden="true" className="agent-empty-glyph">✦</span>
             <h2>What are we working on?</h2>
-            <p>Codex is connected locally in read-only mode for this first version.</p>
+            <p>Codex can inspect and arrange this dashboard through scoped local tools.</p>
           </div>
         ) : messages.map((message) => (
           <div className={`agent-message is-${message.role}`} key={message.id}>

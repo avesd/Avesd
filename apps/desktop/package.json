@@ -16,6 +16,8 @@
     "@avesd/acp-client": "workspace:*",
     "@avesd/kernel": "workspace:*",
     "@avesd/plugin-api": "workspace:*",
+    "@avesd/plugin-data": "workspace:*",
+    "@avesd/plugin-ui": "workspace:*",
     "@avesd/workspace-model": "workspace:*",
     "@modelcontextprotocol/server": "catalog:",
     "react": "catalog:",

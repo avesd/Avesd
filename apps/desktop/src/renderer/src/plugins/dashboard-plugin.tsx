@@ -1,18 +1,34 @@
+import type { ContributionRegistry } from "@avesd/kernel";
 import type { PluginDefinition } from "@avesd/plugin-api";
-import type { DashboardLayoutService, DashboardScope } from "@avesd/workspace-model";
+import type { DataSourceContribution } from "@avesd/plugin-data";
+import type { WidgetContribution } from "@avesd/plugin-ui";
+import type {
+  DashboardLayoutService,
+  DashboardScope,
+  DataSourceService,
+} from "@avesd/workspace-model";
 
 import { DashboardShell } from "../components/DashboardShell";
 import { mainViewContribution } from "../workbench/types";
-import type { DashboardWidget, WorkbenchView } from "../workbench/types";
-import type { ContributionRegistry } from "@avesd/kernel";
+import type { WorkbenchView } from "../workbench/types";
 
 export const createDashboardPlugin = (
   layouts: DashboardLayoutService,
   scope: DashboardScope,
-  widgets: ContributionRegistry<DashboardWidget>,
+  widgets: ContributionRegistry<WidgetContribution>,
+  dataSources: DataSourceService,
+  sourceTypes: ContributionRegistry<DataSourceContribution>,
 ): PluginDefinition => {
   const dashboardView: WorkbenchView = {
-    render: () => <DashboardShell layouts={layouts} scope={scope} widgets={widgets} />,
+    render: () => (
+      <DashboardShell
+        dataSources={dataSources}
+        layouts={layouts}
+        scope={scope}
+        sourceTypes={sourceTypes}
+        widgets={widgets}
+      />
+    ),
   };
 
   return {

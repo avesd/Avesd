@@ -14,6 +14,7 @@ apps/desktop/.vitest-attachments
 # Test and tool output
 coverage/
 .turbo/
+.vitest-attachments/
 *.log
 
 # Local environment and operating-system files
@@ -25,4 +26,3 @@ coverage/
 .idea/
 .vscode/*
 !.vscode/settings.json
-
