@@ -11,6 +11,8 @@ allowBuilds:
 minimumReleaseAge: 4320
 
 catalog:
+  "@agentclientprotocol/codex-acp": 1.8.0
+  "@agentclientprotocol/sdk": 1.4.0
   "@eslint/js": 10.0.1
   cordis: 4.0.0-rc.9
   "@types/node": 26.4.1

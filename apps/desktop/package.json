@@ -12,8 +12,11 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@agentclientprotocol/codex-acp": "catalog:",
+    "@avesd/acp-client": "workspace:*",
     "@avesd/kernel": "workspace:*",
     "@avesd/plugin-api": "workspace:*",
+    "@avesd/workspace-model": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:"
   },

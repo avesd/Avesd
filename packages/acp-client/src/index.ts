@@ -1,3 +1,5 @@
+import * as acp from "@agentclientprotocol/sdk";
+
 export interface AcpTransport {
   notify(method: string, params: unknown): void;
   onNotification(listener: (method: string, params: unknown) => void): () => void;
@@ -74,5 +76,106 @@ export class AcpClient {
         listener(params as AcpSessionUpdate);
       }
     });
+  }
+}
+
+export type AcpRuntimeEvent =
+  | { readonly text: string; readonly type: "messageChunk" }
+  | { readonly title: string; readonly type: "activity" };
+
+export interface AcpByteStream {
+  readonly readable: ReadableStream<Uint8Array>;
+  readonly writable: WritableStream<Uint8Array>;
+}
+
+export interface AcpSessionConnectionOptions {
+  readonly clientInfo: {
+    readonly name: string;
+    readonly title?: string;
+    readonly version: string;
+  };
+  readonly cwd: string;
+  readonly onEvent: (event: AcpRuntimeEvent) => void;
+  readonly stream: AcpByteStream;
+}
+
+export class AcpSessionConnection {
+  private constructor(
+    private readonly connection: acp.ClientConnection,
+    readonly agentName: string,
+    readonly sessionId: string,
+  ) {}
+
+  static async connect(
+    options: AcpSessionConnectionOptions,
+  ): Promise<AcpSessionConnection> {
+    const stream = acp.ndJsonStream(
+      options.stream.writable,
+      options.stream.readable,
+    );
+    const client = acp.client({ name: options.clientInfo.name })
+      .onRequest(
+        acp.methods.client.session.requestPermission,
+        () => ({ outcome: { outcome: "cancelled" } }),
+      )
+      .onNotification(acp.methods.client.session.update, ({ params }) => {
+        const update = params.update;
+
+        if (
+          update.sessionUpdate === "agent_message_chunk" &&
+          update.content.type === "text"
+        ) {
+          options.onEvent({ text: update.content.text, type: "messageChunk" });
+        } else if (update.sessionUpdate === "tool_call") {
+          options.onEvent({ title: update.title, type: "activity" });
+        }
+      });
+    const connection = client.connect(stream);
+
+    try {
+      const initialized = await connection.agent.request<acp.InitializeResponse>(
+        "initialize",
+        {
+          clientCapabilities: {},
+          clientInfo: options.clientInfo,
+          protocolVersion: acp.PROTOCOL_VERSION,
+        },
+      );
+      const session = await connection.agent.request(
+        acp.methods.agent.session.new,
+        { cwd: options.cwd, mcpServers: [] },
+      );
+
+      return new AcpSessionConnection(
+        connection,
+        initialized.agentInfo?.title ?? initialized.agentInfo?.name ?? "Agent",
+        session.sessionId,
+      );
+    } catch (error) {
+      connection.close(error);
+      throw error;
+    }
+  }
+
+  async cancel(): Promise<void> {
+    await this.connection.agent.notify(acp.methods.agent.session.cancel, {
+      sessionId: this.sessionId,
+    });
+  }
+
+  close(): void {
+    this.connection.close();
+  }
+
+  async prompt(text: string): Promise<string> {
+    const response = await this.connection.agent.request(
+      acp.methods.agent.session.prompt,
+      {
+        prompt: [{ text, type: "text" }],
+        sessionId: this.sessionId,
+      },
+    );
+
+    return response.stopReason;
   }
 }
