@@ -18,6 +18,7 @@ import { page } from "vitest/browser";
 import { createRoot } from "react-dom/client";
 
 import "../styles.css";
+import { createWidgetServices } from "../workbench/widget-services";
 import { DashboardShell } from "./DashboardShell";
 
 const scope: DashboardScope = {
@@ -94,6 +95,7 @@ describe("DashboardShell", () => {
     const root = createRoot(container);
     root.render(
       <DashboardShell
+        widgetServices={createWidgetServices(dataSources)}
         dataSources={dataSources}
         layouts={layouts}
         scope={scope}

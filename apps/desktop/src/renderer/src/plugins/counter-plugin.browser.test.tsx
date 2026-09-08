@@ -18,6 +18,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { page } from "vitest/browser";
 import { createRoot } from "react-dom/client";
 
+import { createWidgetServices } from "../workbench/widget-services";
 import { DashboardShell } from "../components/DashboardShell";
 import "../styles.css";
 import { counterPlugin } from "./counter-plugin";
@@ -81,6 +82,7 @@ describe("counter plugin data flow", () => {
     const root = createRoot(container);
     root.render(
       <DashboardShell
+        widgetServices={createWidgetServices(dataSources)}
         dataSources={dataSources}
         layouts={layouts}
         scope={scope}
