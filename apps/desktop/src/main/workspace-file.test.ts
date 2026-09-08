@@ -35,3 +35,16 @@ describe("WorkspaceFile", () => {
     await expect(readFile(path, "utf8")).resolves.toContain('"version":1');
   });
 });
+
+it("rejects invalid snapshots before replacing a valid workspace file", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "avesd-workspace-validation-"));
+  temporaryDirectories.push(directory);
+  const path = join(directory, "workspace.json");
+  const file = new WorkspaceFile(path);
+  const snapshot = { version: 1 as const, workspaces: [], dashboards: [], widgets: [], dataSources: [] };
+  await file.save(snapshot);
+  const before = await readFile(path, "utf8");
+  expect(() => file.save({ ...snapshot, widgets: [{ id: "invalid" }] })).toThrow("Invalid workspace data");
+  expect(await readFile(path, "utf8")).toBe(before);
+  await expect(file.load()).resolves.toEqual(snapshot);
+});

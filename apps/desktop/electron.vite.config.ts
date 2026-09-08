@@ -24,8 +24,9 @@ export default defineConfig({
     build: {
       rollupOptions: {
         external: ["electron"],
+        input: { index: "src/preload/index.ts", "local-widget": "src/preload/local-widget.ts" },
         output: {
-          entryFileNames: "index.cjs",
+          entryFileNames: "[name].cjs",
           format: "cjs",
         },
       },

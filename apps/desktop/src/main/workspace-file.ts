@@ -24,12 +24,15 @@ export class WorkspaceFile {
     }
   }
 
-  save(input: unknown): Promise<void> {
+  save(input: unknown, expected?: { snapshot: WorkspaceSnapshot | undefined }): Promise<void> {
     const snapshot = parseWorkspaceSnapshot(input);
     if (!snapshot) {
       throw new Error("Workspace snapshot is required");
     }
     const save = this.#saving.then(async () => {
+      if (expected && JSON.stringify(await this.load()) !== JSON.stringify(expected.snapshot)) {
+        throw new Error("Workspace changed; refresh and retry the operation.");
+      }
       await mkdir(dirname(this.#path), { recursive: true });
       const temporaryPath = `${this.#path}.tmp`;
       await writeFile(temporaryPath, `${JSON.stringify(snapshot)}\n`, {

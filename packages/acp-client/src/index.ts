@@ -89,6 +89,8 @@ export interface AcpByteStream {
 }
 
 export interface AcpSessionConnectionOptions {
+  readonly allowedToolNames?: readonly string[];
+  readonly authorizeToolCall?: (toolCall: { readonly name?: string | null; readonly rawInput?: unknown }) => boolean;
   readonly clientInfo: {
     readonly name: string;
     readonly title?: string;
@@ -110,6 +112,7 @@ export class AcpSessionConnection {
   static async connect(
     options: AcpSessionConnectionOptions,
   ): Promise<AcpSessionConnection> {
+    const toolCalls = new Map<string, { name?: string | null; rawInput?: unknown }>();
     const stream = acp.ndJsonStream(
       options.stream.writable,
       options.stream.readable,
@@ -119,13 +122,25 @@ export class AcpSessionConnection {
         acp.methods.client.session.requestPermission,
         ({ params }) => {
           const allowOnce = params.options.find(({ kind }) => kind === "allow_once");
-          return params.toolCall.name?.startsWith("avesd_") && allowOnce
+          const key = `${params.sessionId}/${params.toolCall.toolCallId}`;
+          const toolCall = { ...toolCalls.get(key), ...params.toolCall };
+          const authorized = options.authorizeToolCall?.(toolCall)
+            ?? (!!toolCall.name && !!options.allowedToolNames?.includes(toolCall.name));
+          return authorized && allowOnce
             ? { outcome: { optionId: allowOnce.optionId, outcome: "selected" as const } }
             : { outcome: { outcome: "cancelled" as const } };
         },
       )
       .onNotification(acp.methods.client.session.update, ({ params }) => {
         const update = params.update;
+        if (update.sessionUpdate === "tool_call" || update.sessionUpdate === "tool_call_update") {
+          const key = `${params.sessionId}/${update.toolCallId}`;
+          if (update.status === "completed" || update.status === "failed") toolCalls.delete(key);
+          else {
+            const previous = toolCalls.get(key);
+            toolCalls.set(key, { name: update.name ?? previous?.name, rawInput: update.rawInput ?? previous?.rawInput });
+          }
+        }
 
         if (
           update.sessionUpdate === "agent_message_chunk" &&

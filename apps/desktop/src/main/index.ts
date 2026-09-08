@@ -1,4 +1,7 @@
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { WidgetWorkspaceBridge } from "./widget-workspace-bridge";
+import { parseWidgetWorkspaceRequest, widgetWorkspaceChannels } from "../shared/widget-workspace";
+import type { WidgetInstanceId } from "@avesd/workspace-model";
+import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import type { IpcMainInvokeEvent } from "electron";
 import { join } from "node:path";
 
@@ -15,11 +18,25 @@ import { parseWebCommand, webSurfaceChannel, webSurfaceEventChannel } from "../s
 import { browserControlsChannel, parseBrowserControls } from "../shared/browser-controls";
 import { BrowserBindings } from "./browser-bindings";
 import { browserBindingFile } from "./browser-binding-file";
+import { loadStoragePaths } from "./storage-paths";
+import { LocalPluginStore } from "./local-plugin-store";
+import { LocalWidgetRunner } from "./local-widget-sandbox";
+import { LocalWidgetSurfaces } from "./local-widget-surfaces";
+import { AgentWorkbench } from "./agent-workbench";
+import { openAgentGateway } from "./agent-gateway";
+import { localPluginsChannels } from "../shared/local-plugins";
+import { sameDashboard } from "@avesd/workspace-model";
+import { parseWorkspaceNavigation, workspaceNavigationChannel } from "../shared/workspace-navigation";
+import type { WorkspaceSnapshot } from "@avesd/workspace-model";
 
 let agentHost: CodexAgentHost | undefined;
 let mainWindow: BrowserWindow | undefined;
 let workspaceFile: WorkspaceFile | undefined;
-let workspacePath: string | undefined;
+let workbench: AgentWorkbench | undefined;
+let gateway: Awaited<ReturnType<typeof openAgentGateway>> | undefined;
+let localWidgetSurfaces: LocalWidgetSurfaces | undefined;
+const widgetWorkspaceBridge = new WidgetWorkspaceBridge();
+const localWidgetRunner = new LocalWidgetRunner(widgetWorkspaceBridge);
 let webSurfaces: WebSurfaceManager | undefined;
 let browserBindings: BrowserBindings | undefined;
 
@@ -59,32 +76,15 @@ const createMainWindow = (): BrowserWindow => {
 
   window.webContents.on("will-navigate", (event) => event.preventDefault());
 
-  webSurfaces = new WebSurfaceManager(window, () => workspaceFile!.load(), () => {
-    if (!window.isDestroyed()) window.webContents.send(webSurfaceEventChannel);
-  });
-  window.on("close", () => webSurfaces?.dispose());
-  window.webContents.on("render-process-gone", () => webSurfaces?.dispose());
-
-  agentHost?.dispose();
-  if (!workspacePath) {
-    throw new Error("Workspace storage is not ready");
-  }
-  agentHost = new CodexAgentHost(
-    process.cwd(),
-    workspacePath,
-    join(__dirname, "workspace-mcp.js"),
-  );
-  const unsubscribe = agentHost.subscribe((event) => {
-    if (!window.isDestroyed()) {
-      window.webContents.send(agentIpcChannels.event, event);
-    }
-  });
+  resetWindowServices(window);
+  window.on("close", () => { webSurfaces?.dispose(); localWidgetSurfaces?.dispose(); });
+  window.webContents.on("render-process-gone", () => { webSurfaces?.dispose(); localWidgetSurfaces?.dispose(); });
   window.once("closed", () => {
-    unsubscribe();
     if (mainWindow === window) {
       agentHost?.dispose();
       agentHost = undefined;
       mainWindow = undefined;
+      localWidgetRunner.dispose();
     }
   });
   mainWindow = window;
@@ -98,13 +98,41 @@ const createMainWindow = (): BrowserWindow => {
   return window;
 };
 
+const resetWindowServices = (window: BrowserWindow): void => {
+  webSurfaces?.dispose();
+  localWidgetSurfaces?.dispose();
+  agentHost?.dispose();
+  localWidgetRunner.dispose();
+  if (!workbench) throw new Error("Workspace storage is not ready");
+  webSurfaces = new WebSurfaceManager(window, () => workspaceFile!.load(), () => {
+    if (!window.isDestroyed()) window.webContents.send(webSurfaceEventChannel);
+  });
+  localWidgetSurfaces = new LocalWidgetSurfaces(window, workbench.plugins, () => workspaceFile!.load(), widgetWorkspaceBridge, workbench);
+  agentHost = new CodexAgentHost(process.cwd(), gateway, join(__dirname, "workspace-mcp.js"));
+  agentHost.subscribe((event) => {
+    if (!window.isDestroyed()) window.webContents.send(agentIpcChannels.event, event);
+  });
+};
+
 const hostForEvent = (event: IpcMainInvokeEvent): CodexAgentHost => {
-  if (!mainWindow || event.sender !== mainWindow.webContents || !agentHost) {
+  if (!mainWindow || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame || !agentHost) {
     throw new Error("Agent IPC request did not originate from the active window");
   }
 
   return agentHost;
 };
+
+ipcMain.handle(widgetWorkspaceChannels.renderer, (event, instanceId: unknown, input: unknown) => {
+  hostForEvent(event);
+  if (typeof instanceId !== "string" || !workbench) throw new Error("Widget instance is required.");
+  return workbench.invokeWidget(instanceId as WidgetInstanceId, parseWidgetWorkspaceRequest(input));
+});
+
+ipcMain.handle(workspaceNavigationChannel, (event, input: unknown) => {
+  hostForEvent(event);
+  if (!workbench) throw new Error("Workspace is unavailable.");
+  return workbench.navigate(parseWorkspaceNavigation(input));
+});
 
 ipcMain.handle(agentIpcChannels.connect, (event) => hostForEvent(event).connect());
 ipcMain.handle(webSurfaceChannel, (event, input: unknown) => {
@@ -124,9 +152,18 @@ ipcMain.handle(browserControlsChannel, async (event, input: unknown) => {
   if (!snapshot) throw new Error("Workspace is unavailable.");
   await browserBindings.prune(snapshot);
   switch (command.type) {
-    case "list": return browserBindings.list(snapshot);
-    case "bind": return browserBindings.bind(command, snapshot);
-    case "unbind": return browserBindings.unbind(command.sourceId, command.inputId);
+    case "list": return browserBindings.list(snapshot).filter((binding) => sameDashboard(binding, snapshot.selection));
+    case "bind":
+      if (!snapshot.widgets.some((widget) => widget.id === command.sourceId && sameDashboard(widget, snapshot.selection))
+        || !snapshot.widgets.some((widget) => widget.id === command.targetId && sameDashboard(widget, snapshot.selection))) {
+        throw new Error("Browser bindings require the active dashboard.");
+      }
+      return browserBindings.bind(command, snapshot);
+    case "unbind":
+      if (!snapshot.widgets.some((widget) => widget.id === command.sourceId && sameDashboard(widget, snapshot.selection))) {
+        throw new Error("Browser bindings require the active dashboard.");
+      }
+      return browserBindings.unbind(command.sourceId, command.inputId);
     case "invoke": return webSurfaces.control(command, browserBindings);
   }
 });
@@ -134,29 +171,61 @@ ipcMain.handle(agentIpcChannels.prompt, (event, input: unknown) =>
   hostForEvent(event).prompt(parseAgentPrompt(input)));
 ipcMain.handle(agentIpcChannels.cancel, (event) => hostForEvent(event).cancel());
 ipcMain.handle(agentIpcChannels.configureWorkbench, (event, context: unknown) => {
-  const host = hostForEvent(event);
+  hostForEvent(event);
   if (!context || typeof context !== "object") {
     throw new TypeError("Agent workbench context must be an object");
   }
-  host.configureWorkbench(context as AgentWorkbenchContext);
+  workbench?.configure(context as AgentWorkbenchContext);
 });
 ipcMain.handle(workspaceIpcChannels.load, (event) => {
   hostForEvent(event);
   return workspaceFile?.load();
 });
-ipcMain.handle(workspaceIpcChannels.save, (event, snapshot: unknown) => {
+ipcMain.handle(workspaceIpcChannels.save, (event, snapshot: WorkspaceSnapshot, expected?: { snapshot: WorkspaceSnapshot | undefined }) => {
   hostForEvent(event);
-  if (!workspaceFile) {
+  if (!workbench) {
     throw new Error("Workspace storage is not ready");
   }
-  return workspaceFile.save(snapshot);
+  return workbench.save(snapshot, expected);
 });
 
-app.whenReady().then(async () => {
-  workspacePath = join(app.getPath("userData"), "workspace-v1.json");
-  workspaceFile = new WorkspaceFile(workspacePath);
+ipcMain.handle(localPluginsChannels.list, (event) => {
+  hostForEvent(event);
+  return workbench?.plugins.list() ?? [];
+});
+ipcMain.handle(localPluginsChannels.surface, (event, input: unknown) => {
+  hostForEvent(event);
+  const command = parseWebCommand(input);
+  if (!localWidgetSurfaces) throw new Error("Local widgets are not ready.");
+  if (command.type === "create" || command.type === "bounds") return localWidgetSurfaces.command(command);
+  if (command.type === "destroy") return localWidgetSurfaces.command({ type: "destroy", id: command.id });
+  throw new Error("Invalid local widget command.");
+});
+
+export const desktopReady = app.whenReady().then(async () => {
+  let storagePaths;
+  try {
+    storagePaths = await loadStoragePaths(app.getPath("userData"), app.getPath("home"));
+  } catch (error) {
+    dialog.showErrorBox("Unable to start Avesd", `${error instanceof Error ? error.message : "Storage could not be initialized."}\n\nCheck .avesd/config.json in your home directory and restart Avesd.`);
+    app.quit();
+    return;
+  }
+  workspaceFile = new WorkspaceFile(storagePaths.workspace);
+  workbench = new AgentWorkbench(workspaceFile, new LocalPluginStore(storagePaths.plugins), localWidgetRunner,
+    () => {
+      widgetWorkspaceBridge.changed();
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(workspaceIpcChannels.changed);
+    },
+    () => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(localPluginsChannels.changed); },
+    () => {
+      gateway?.rotateToken();
+      if (mainWindow && !mainWindow.isDestroyed()) resetWindowServices(mainWindow);
+    });
+  await workbench.navigate({ type: "inspect" });
+  gateway = await openAgentGateway((name, input) => workbench!.invoke(name, input)).catch(() => undefined);
   // Fail closed for browser controls without preventing the local dashboard from opening.
-  browserBindings = await BrowserBindings.open(browserBindingFile(join(app.getPath("userData"), "browser-bindings-v1.json")))
+  browserBindings = await BrowserBindings.open(browserBindingFile(storagePaths.browserBindings))
     .catch(() => undefined);
   createMainWindow();
 
@@ -165,6 +234,7 @@ app.whenReady().then(async () => {
       createMainWindow();
     }
   });
+  return gateway;
 });
 
 app.on("window-all-closed", () => {
@@ -175,4 +245,7 @@ app.on("window-all-closed", () => {
 
 app.on("before-quit", () => {
   agentHost?.dispose();
+  localWidgetRunner.dispose();
+  localWidgetSurfaces?.dispose();
+  gateway?.close();
 });

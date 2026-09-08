@@ -14,10 +14,7 @@ import {
   WorkspaceDataCoordinator,
 } from "@avesd/workspace-model";
 import type {
-  DashboardId,
-  DashboardScope,
   WidgetDefinition,
-  WorkspaceId,
 } from "@avesd/workspace-model";
 
 import { agentPlugin } from "../plugins/agent-plugin";
@@ -25,6 +22,9 @@ import { counterPlugin } from "../plugins/counter-plugin";
 import { createDashboardPlugin } from "../plugins/dashboard-plugin";
 import { welcomePlugin } from "../plugins/welcome-plugin";
 import { createWebPlugin } from "../plugins/web-plugin";
+import { createLocalPlugin } from "../plugins/local-plugin";
+import { createWidgetServices } from "./widget-services";
+import { WorkbenchNavigation } from "./navigation";
 import { WebResults } from "./web-results";
 import {
   agentOverlayContribution,
@@ -48,11 +48,9 @@ const capabilities = new CapabilityBroker(
 capabilities.register("agent", () => window.avesd.agent);
 export const pluginHost = new PluginHost({ capabilities, contributions });
 let disposeWorkspaceRefresh: (() => void | Promise<void>) | undefined;
+let disposeLocalPlugins: (() => void) | undefined;
 
-const dashboardScope: DashboardScope = {
-  dashboardId: "local-dashboard" as DashboardId,
-  workspaceId: "local-workspace" as WorkspaceId,
-};
+export let workbenchNavigation: WorkbenchNavigation;
 const resolveWidget = (
   pluginId: string,
   widgetTypeId: string,
@@ -63,6 +61,7 @@ const resolveWidget = (
       ownerId === pluginId && value.widgetTypeId === widgetTypeId);
   return contribution?.pluginId
     ? {
+        capabilities: contribution.value.capabilities,
         configurationVersion: contribution.value.configuration.version,
         defaultConfiguration: contribution.value.configuration.default,
         defaultSize: contribution.value.sizing.default,
@@ -76,23 +75,13 @@ const resolveWidget = (
 };
 
 export const startWorkbench = async (): Promise<void> => {
+  const initial = await window.avesd.navigation.command({ type: "inspect" });
   const workspaceRepository = await PersistentWorkspaceRepository.open(window.avesd.workspaceStorage);
+  workbenchNavigation = new WorkbenchNavigation(window.avesd.navigation, (notify) => workspaceRepository.refresh(notify), initial);
   disposeWorkspaceRefresh?.();
-  disposeWorkspaceRefresh = window.avesd.agent.subscribe((event) => {
-    if (event.type === "turnComplete") {
-      void workspaceRepository.refresh();
-    }
+  disposeWorkspaceRefresh = window.avesd.workspaceStorage.subscribe(() => {
+    void workbenchNavigation.command({ type: "inspect" }).catch(() => undefined);
   });
-  if ((await workspaceRepository.listWorkspaces()).length === 0) {
-    await workspaceRepository.createWorkspace({
-      id: dashboardScope.workspaceId,
-      name: "Local workspace",
-    });
-    await workspaceRepository.createDashboard(
-      { workspaceId: dashboardScope.workspaceId },
-      { id: dashboardScope.dashboardId, name: "My dashboard", viewState: {} },
-    );
-  }
   const webResults = new WebResults(window.avesd.web, workspaceRepository);
   const dataSources = webResults.wrap(new WorkspaceDataCoordinator(
     workspaceRepository,
@@ -115,16 +104,36 @@ export const startWorkbench = async (): Promise<void> => {
     (scope, id) => dataSources.read(scope, id));
   const dashboardPlugin = createDashboardPlugin(
     dashboardLayouts,
-    dashboardScope,
+    workbenchNavigation,
     dashboardWidgetRegistry,
     dataSources,
     dataSourceRegistry,
+    createWidgetServices(dataSources, window.avesd.browserControls, window.avesd.widgetWorkspace),
     window.avesd.browserControls,
   );
   await pluginHost.replace(counterPlugin);
   await pluginHost.replace(dashboardPlugin);
   await pluginHost.replace(welcomePlugin);
   await pluginHost.replace(createWebPlugin(window.avesd.web, webResults));
+  const revisions = new Map<string, string>();
+  let syncing = Promise.resolve();
+  const syncLocalPlugins = () => {
+    syncing = syncing.catch(() => undefined).then(async () => {
+      const plugins = await window.avesd.localPlugins.list();
+      for (const plugin of plugins) {
+        if (revisions.get(plugin.manifest.id) === plugin.revision) continue;
+        await pluginHost.replace(createLocalPlugin(plugin, window.avesd.localPlugins));
+        revisions.set(plugin.manifest.id, plugin.revision);
+      }
+      for (const id of revisions.keys()) {
+        if (!plugins.some((plugin) => plugin.manifest.id === id)) { await pluginHost.remove(id); revisions.delete(id); }
+      }
+    });
+    return syncing;
+  };
+  disposeLocalPlugins?.();
+  disposeLocalPlugins = window.avesd.localPlugins.subscribe(() => { void syncLocalPlugins(); });
+  await syncLocalPlugins();
   await window.avesd.agent.configureWorkbench({
     dataSourceDefinitions: dataSourceRegistry.getAll(dataSourceContribution.id).flatMap(
       ({ pluginId, value }) => pluginId ? [{
@@ -136,7 +145,6 @@ export const startWorkbench = async (): Promise<void> => {
         sourceTypeId: value.sourceTypeId,
       }] : [],
     ),
-    scope: dashboardScope,
     widgetDefinitions: dashboardWidgetRegistry.getAll(dashboardWidgetContribution.id).flatMap(
       ({ pluginId, value }) => {
         const definition = pluginId ? resolveWidget(pluginId, value.widgetTypeId) : undefined;
@@ -162,6 +170,7 @@ if (import.meta.hot) {
 
   import.meta.hot.dispose(() => {
     void disposeWorkspaceRefresh?.();
+    disposeLocalPlugins?.();
     void pluginHost.dispose();
   });
 }

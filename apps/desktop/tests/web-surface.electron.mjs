@@ -5,10 +5,13 @@ const require = createRequire(import.meta.url);
 // Reuse the browser test provider's installed Playwright peer.
 const { _electron: electron } = createRequire(require.resolve('@vitest/browser-playwright'))('playwright');
 const { expect } = createRequire(require.resolve('@vitest/browser-playwright'))('playwright/test');
-import { mkdtemp } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:http';
 import assert from 'node:assert/strict';
 const directory = await mkdtemp(join(tmpdir(), 'avesd-web-qa-'));
+const dataDirectory = join(directory, 'custom data');
+await mkdir(join(directory, '.avesd'));
+await writeFile(join(directory, '.avesd', 'config.json'), JSON.stringify({ dataDirectory }));
 const server = createServer((_req, res) => {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
@@ -60,6 +63,8 @@ try {
   assert.equal(alive,true);
   // Layout and bindings persist; extracted values and source objects do not.
   const snapshot = await page.evaluate(()=>window.avesd.workspaceStorage.load());
+  assert.deepEqual(JSON.parse(await readFile(join(dataDirectory, 'workspace-v1.json'), 'utf8')), snapshot);
+  await assert.rejects(readFile(join(directory, 'workspace-v1.json')), {code:'ENOENT'});
   assert.ok(!JSON.stringify(snapshot).includes('Synthetic web fixture'));
   assert.ok(!snapshot.dataSources.some(s=>s.dataType==='avesd.web-result'));
   await page.getByLabel('Script mode').selectOption('css');
@@ -111,6 +116,8 @@ try {
   await page.getByLabel('Allow extract',{exact:true}).check();
   await page.getByRole('button',{name:'Save browser binding',exact:true}).click();
   await expect.poll(()=>page.evaluate(()=>window.avesd.browserControls.list())).toHaveLength(1);
+  assert.equal(JSON.parse(await readFile(join(dataDirectory, 'browser-bindings-v1.json'), 'utf8')).length,1);
+  await assert.rejects(readFile(join(directory, 'browser-bindings-v1.json')), {code:'ENOENT'});
   await page.getByRole('button',{name:'Done',exact:true}).click();
   await controls.getByRole('button',{name:'Read text',exact:true}).click();
   await controls.locator('pre').filter({hasText:'Synthetic project'}).waitFor();

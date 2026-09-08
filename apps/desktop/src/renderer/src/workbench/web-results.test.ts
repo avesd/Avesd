@@ -35,6 +35,7 @@ describe("temporary web outputs", () => {
     await expect(data.update(scope, id, 1, 8)).rejects.toThrow("read-only");
     const other = { ...scope, dashboardId: "other" as DashboardId };
     expect(await data.list(other)).toEqual([]);
+    await expect(data.read(other, id)).rejects.toThrow("incompatible");
     await layouts.apply(other, { expectedRevision: 0, operations: [
       { type: "add", id: "other-consumer" as WidgetInstanceId, pluginId: WEB_PLUGIN_ID, widgetTypeId: "result" },
     ] });

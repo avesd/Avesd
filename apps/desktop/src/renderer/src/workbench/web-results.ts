@@ -47,7 +47,7 @@ export class WebResults {
       read: async (scope, id) => {
         if (!isWeb(id)) return base.read(scope, id);
         const source = (await this.list(scope)).find((source) => source.id === id);
-        if (!source) throw new Error("Web output is unavailable.");
+        if (!source || source.scope.kind !== "dashboard" || !("dashboardId" in scope) || source.scope.dashboardId !== scope.dashboardId) throw new Error("Web output is unavailable or incompatible with this dashboard.");
         return source;
       },
       update: (scope, id, revision, value) => {

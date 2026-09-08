@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { WebContentsView, session } from "electron";
 import type { BrowserWindow } from "electron";
+import { sameDashboard } from "@avesd/workspace-model";
 import type { JsonObject, WorkspaceSnapshot } from "@avesd/workspace-model";
 import type { BrowserBindings } from "./browser-bindings";
 import type { BrowserControlsCommand } from "../shared/browser-controls";
@@ -30,7 +31,7 @@ export class WebSurfaceManager {
     if (this.#closed) throw new Error("Web surfaces are closed.");
     if (command.type === "create") {
       const snapshot = await this.load();
-      if (this.#closed || !snapshot?.widgets.some((widget) => widget.id === command.widgetId
+      if (this.#closed || !snapshot?.widgets.some((widget) => widget.id === command.widgetId && sameDashboard(widget, snapshot.selection)
         && widget.pluginId === WEB_PLUGIN_ID && widget.widgetTypeId === "page")) {
         throw new Error("Web widget is unavailable.");
       }

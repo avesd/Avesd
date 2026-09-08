@@ -42,6 +42,8 @@ describe("AcpSessionConnection", () => {
     const clientToAgent = new TransformStream<Uint8Array>();
     const agentToClient = new TransformStream<Uint8Array>();
     let permissionOutcome: unknown;
+    let rejectedOutcome: unknown;
+    let correlatedOutcome: unknown;
     let receivedMcpServers: unknown;
     const agent = acp.agent({ name: "test-agent" })
       .onRequest("initialize", () => ({
@@ -62,6 +64,18 @@ describe("AcpSessionConnection", () => {
             toolCall: { name: "avesd_add_widget", toolCallId: "tool-1" },
           },
         );
+        rejectedOutcome = await client.request(acp.methods.client.session.requestPermission, {
+          options: [{ kind: "allow_once", name: "Allow", optionId: "allow" }], sessionId: params.sessionId,
+          toolCall: { name: "avesd_unregistered_shell", toolCallId: "tool-2" },
+        });
+        await client.notify("session/update", { sessionId: params.sessionId, update: {
+          sessionUpdate: "tool_call", toolCallId: "tool-3", title: "MCP widget tool", status: "pending",
+          rawInput: { server: "avesd", tool: "avesd_add_widget" },
+        } });
+        correlatedOutcome = await client.request(acp.methods.client.session.requestPermission, {
+          options: [{ kind: "allow_once", name: "Allow", optionId: "allow" }], sessionId: params.sessionId,
+          toolCall: { toolCallId: "tool-3", status: "pending" },
+        });
         await client.notify("session/update", {
           sessionId: params.sessionId,
           update: {
@@ -78,6 +92,11 @@ describe("AcpSessionConnection", () => {
     ));
     const onEvent = vi.fn();
     const session = await AcpSessionConnection.connect({
+      allowedToolNames: ["avesd_add_widget"],
+      authorizeToolCall: (toolCall) => {
+        const input = toolCall.rawInput as { server?: string; tool?: string } | undefined;
+        return toolCall.name === "avesd_add_widget" || (input?.server === "avesd" && input.tool === "avesd_add_widget");
+      },
       clientInfo: { name: "test-client", version: "1.0.0" },
       cwd: "/workspace",
       mcpServers: [{
@@ -100,6 +119,8 @@ describe("AcpSessionConnection", () => {
     expect(permissionOutcome).toEqual({
       outcome: { optionId: "allow", outcome: "selected" },
     });
+    expect(rejectedOutcome).toEqual({ outcome: { outcome: "cancelled" } });
+    expect(correlatedOutcome).toEqual({ outcome: { optionId: "allow", outcome: "selected" } });
 
     session.close();
     agentConnection.close();

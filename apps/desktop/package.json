@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "preview": "electron-vite preview",
     "test": "vitest run",
-    "test:electron": "node tests/web-surface.electron.mjs"
+    "test:electron": "node tests/web-surface.electron.mjs && node tests/local-plugins.electron.mjs && node tests/dashboard-navigation.electron.mjs"
   },
   "dependencies": {
     "@agentclientprotocol/codex-acp": "catalog:",

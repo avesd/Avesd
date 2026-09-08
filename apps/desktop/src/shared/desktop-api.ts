@@ -1,8 +1,10 @@
+import type { DesktopWidgetWorkspaceApi } from "./widget-workspace";
 import type { AgentService } from "@avesd/plugin-api";
 import type { WebSurfaceApi } from "./web-surface";
 import type { BrowserControlsApi } from "./browser-controls";
+import type { LocalPluginsApi } from "./local-plugins";
+import type { WorkspaceNavigationApi } from "./workspace-navigation";
 import type {
-  DashboardScope,
   DataSourceDefinition,
   WidgetDefinition,
   WorkspaceSnapshot,
@@ -16,6 +18,9 @@ export interface DesktopRuntime {
 }
 
 export interface DesktopApi {
+  readonly widgetWorkspace: DesktopWidgetWorkspaceApi;
+  readonly navigation: WorkspaceNavigationApi;
+  readonly localPlugins: LocalPluginsApi;
   readonly browserControls: BrowserControlsApi;
   readonly web: WebSurfaceApi;
   readonly agent: DesktopAgentApi;
@@ -25,7 +30,6 @@ export interface DesktopApi {
 
 export interface AgentWorkbenchContext {
   readonly dataSourceDefinitions: readonly DataSourceDefinition[];
-  readonly scope: DashboardScope;
   readonly widgetDefinitions: readonly WidgetDefinition[];
 }
 
@@ -35,7 +39,8 @@ export interface DesktopAgentApi extends AgentService {
 
 export interface WorkspaceStorageApi {
   load(): Promise<unknown>;
-  save(snapshot: WorkspaceSnapshot): Promise<void>;
+  save(snapshot: WorkspaceSnapshot, expected?: { snapshot: WorkspaceSnapshot | undefined }): Promise<void>;
+  subscribe(listener: () => void): () => void;
 }
 
 export const agentIpcChannels = Object.freeze({
@@ -47,6 +52,7 @@ export const agentIpcChannels = Object.freeze({
 });
 
 export const workspaceIpcChannels = Object.freeze({
+  changed: "workspace:changed",
   load: "workspace:load",
   save: "workspace:save",
 });

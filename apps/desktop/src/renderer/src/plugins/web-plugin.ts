@@ -136,7 +136,7 @@ export function createWebPlugin(api: WebSurfaceApi, results: WebResults): Plugin
       window.addEventListener("scroll", scheduleBounds, true);
       const unsubscribe = api.subscribe(() => void refresh());
       void api.command({ type: "create", widgetId: context.instanceId }).then((next) => {
-        if (disposed) { void api.command({ type: "destroy", id: next.id }); return; }
+        if (disposed) { void api.command({ type: "destroy", id: next.id }).catch(() => undefined); return; }
         show(next); results.attach(context.instanceId, next.id); scheduleBounds();
       }).catch(() => { if (!disposed) status.textContent = "Browser unavailable. Remove and re-add the widget to retry."; });
       return {

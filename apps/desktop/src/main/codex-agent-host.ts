@@ -6,7 +6,8 @@ import { Readable, Writable } from "node:stream";
 import { AcpSessionConnection } from "@avesd/acp-client";
 import type { AcpRuntimeEvent } from "@avesd/acp-client";
 import type { AgentEvent, Dispose } from "@avesd/plugin-api";
-import type { AgentWorkbenchContext } from "../shared/desktop-api";
+import type { AgentGatewayAddress } from "./agent-gateway";
+import { authorizeAvesdTool, AVESD_MCP_SERVER_NAME } from "./agent-tool-permission";
 
 const moduleRequire = createRequire(import.meta.url);
 
@@ -16,22 +17,18 @@ const errorMessage = (error: unknown): string =>
 export class CodexAgentHost {
   readonly #cwd: string;
   readonly #mcpServerPath: string;
-  readonly #workspacePath: string;
+  readonly #gateway: AgentGatewayAddress | undefined;
   readonly #listeners = new Set<(event: AgentEvent) => void>();
   #child?: ChildProcessWithoutNullStreams;
   #connecting?: Promise<void>;
   #isPrompting = false;
+  #disposed = false;
   #session?: AcpSessionConnection;
-  #workbenchContext?: AgentWorkbenchContext;
 
-  constructor(cwd: string, workspacePath: string, mcpServerPath: string) {
+  constructor(cwd: string, gateway: AgentGatewayAddress | undefined, mcpServerPath: string) {
     this.#cwd = cwd;
-    this.#workspacePath = workspacePath;
+    this.#gateway = gateway;
     this.#mcpServerPath = mcpServerPath;
-  }
-
-  configureWorkbench(context: AgentWorkbenchContext): void {
-    this.#workbenchContext = context;
   }
 
   async cancel(): Promise<void> {
@@ -39,6 +36,7 @@ export class CodexAgentHost {
   }
 
   connect(): Promise<void> {
+    if (this.#disposed) return Promise.reject(new Error("This agent session has ended."));
     if (this.#session) {
       return Promise.resolve();
     }
@@ -57,6 +55,7 @@ export class CodexAgentHost {
   }
 
   dispose(): void {
+    this.#disposed = true;
     this.#session?.close();
     this.#session = undefined;
     this.#stopChild();
@@ -102,6 +101,7 @@ export class CodexAgentHost {
   }
 
   async #start(): Promise<void> {
+    if (!this.#gateway) throw new Error("The local Avesd tool gateway is unavailable. Restart the application to retry.");
     const adapterPath = moduleRequire.resolve("@agentclientprotocol/codex-acp");
     const child = spawn(process.execPath, [adapterPath], {
       cwd: this.#cwd,
@@ -130,27 +130,30 @@ export class CodexAgentHost {
     });
 
     try {
-      this.#session = await AcpSessionConnection.connect({
+      const session = await AcpSessionConnection.connect({
+        authorizeToolCall: authorizeAvesdTool,
         clientInfo: { name: "avesd", title: "Avesd", version: "0.1.0" },
         cwd: this.#cwd,
-        mcpServers: this.#workbenchContext ? [{
+        mcpServers: [{
           args: [this.#mcpServerPath],
           command: process.execPath,
           env: [
-            { name: "AVESD_MCP_CONTEXT", value: JSON.stringify(this.#workbenchContext) },
-            { name: "AVESD_WORKSPACE_PATH", value: this.#workspacePath },
+            { name: "AVESD_HOST_URL", value: this.#gateway.url },
+            { name: "AVESD_HOST_TOKEN", value: this.#gateway.token },
             { name: "ELECTRON_RUN_AS_NODE", value: "1" },
           ],
-          name: "Avesd workspace",
-        }] : [],
+          name: AVESD_MCP_SERVER_NAME,
+        }],
         onEvent: (event) => this.#handleRuntimeEvent(event),
         stream: {
           readable: Readable.toWeb(child.stdout) as ReadableStream<Uint8Array>,
           writable: Writable.toWeb(child.stdin),
         },
       });
+      if (this.#disposed) { session.close(); throw new Error("This agent session has ended."); }
+      this.#session = session;
       this.#emit({
-        message: this.#session.agentName,
+        message: session.agentName,
         status: "connected",
         type: "status",
       });
