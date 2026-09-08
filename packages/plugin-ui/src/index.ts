@@ -1,6 +1,8 @@
 import { defineContributionPoint } from "@avesd/plugin-api";
 import type { Dispose } from "@avesd/plugin-api";
 import type {
+  WidgetWorkspaceCapability,
+  WidgetWorkspaceServices,
   DashboardId,
   JsonObject,
   JsonValue,
@@ -46,7 +48,9 @@ export interface WidgetBrowserService {
   click(inputId: string, selector: string): Promise<void>;
 }
 
-export interface WidgetMountContext {
+export type { WidgetWorkspaceCapability, WidgetWorkspaceServices, WidgetCatalogService, WidgetNavigationService, WidgetManagementService, WorkspaceManagementCommand } from "@avesd/workspace-model";
+
+export interface WidgetMountContext extends WidgetWorkspaceServices {
   readonly browser?: WidgetBrowserService;
   readonly configuration: WidgetConfigurationService;
   readonly dashboardId: DashboardId;
@@ -62,6 +66,7 @@ export interface WidgetController {
 }
 
 export interface WidgetContribution {
+  readonly capabilities?: readonly WidgetWorkspaceCapability[];
   readonly configuration: WidgetConfigurationDefinition;
   readonly description?: string;
   readonly displayName: string;

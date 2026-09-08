@@ -93,6 +93,7 @@ export type CreateWidgetInstance = Omit<WidgetInstance, "dashboardId" | "workspa
 export type CreateDataSource = Omit<DataSource, "revision" | "scope">;
 
 export interface WorkspaceSnapshot {
+  readonly selection?: DashboardScope;
   readonly dashboards: readonly Dashboard[];
   readonly dataSources: readonly DataSource[];
   readonly version: 1;

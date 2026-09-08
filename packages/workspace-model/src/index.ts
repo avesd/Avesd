@@ -1,8 +1,10 @@
 export { InMemoryWorkspaceRepository } from "./in-memory-workspace-repository";
-export {
-  PersistentWorkspaceRepository,
-  parseWorkspaceSnapshot,
-} from "./persistent-workspace-repository";
+export { readWorkspaceCatalog } from "./workspace-catalog";
+export type { WidgetWorkspaceServices, WidgetCatalogService, WidgetNavigationService, WidgetManagementService, WorkspaceManagementCommand, DashboardSummary, WidgetWorkspaceCapability, WorkspaceCatalogQuery, WorkspaceCatalogResult } from "./workspace-catalog";
+export { navigateWorkspace, sameDashboard } from "./workspace-navigation";
+export type { WorkspaceNavigationCommand, WorkspaceNavigationState } from "./workspace-navigation";
+export { PersistentWorkspaceRepository } from "./persistent-workspace-repository";
+export { parseWorkspaceSnapshot } from "./workspace-snapshot";
 export type { WorkspacePersistenceDriver } from "./persistent-workspace-repository";
 export { WorkspaceDataCoordinator } from "./data-sources";
 export type {

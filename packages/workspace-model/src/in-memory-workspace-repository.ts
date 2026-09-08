@@ -22,6 +22,7 @@ import type {
 import { WorkspaceModelError } from "./workspace-model-error";
 
 export class InMemoryWorkspaceRepository implements WorkspaceRepository {
+  #selection?: DashboardScope;
   readonly #dashboards = new Map<DashboardId, Dashboard>();
   readonly #dataSources = new Map<DataSourceId, DataSource>();
   readonly #widgets = new Map<WidgetInstanceId, WidgetInstance>();
@@ -44,6 +45,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
   }
 
   #hydrate(snapshot?: WorkspaceSnapshot): void {
+    this.#selection = snapshot?.selection;
     for (const workspace of snapshot?.workspaces ?? []) {
       this.#workspaces.set(workspace.id, workspace);
     }
@@ -212,6 +214,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
 
   async deleteDashboard(scope: DashboardScope): Promise<void> {
     this.#requireDashboard(scope);
+    if (this.#selection?.dashboardId === scope.dashboardId) this.#selection = undefined;
     this.#dashboards.delete(scope.dashboardId);
 
     for (const [id, widget] of this.#widgets) {
@@ -245,6 +248,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
 
   async deleteWorkspace(scope: WorkspaceScope): Promise<void> {
     this.#requireWorkspace(scope.workspaceId);
+    if (this.#selection?.workspaceId === scope.workspaceId) this.#selection = undefined;
     this.#workspaces.delete(scope.workspaceId);
 
     for (const [id, dashboard] of this.#dashboards) {
@@ -267,6 +271,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
 
   async snapshot(): Promise<WorkspaceSnapshot> {
     return {
+      ...(this.#selection ? { selection: this.#selection } : {}),
       dashboards: [...this.#dashboards.values()],
       dataSources: [...this.#dataSources.values()],
       version: 1,

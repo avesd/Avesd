@@ -1,3 +1,4 @@
+import { parseWorkspaceSnapshot } from "./workspace-snapshot";
 import { InMemoryWorkspaceRepository } from "./in-memory-workspace-repository";
 import type {
   CreateDashboard,
@@ -20,10 +21,11 @@ import type {
 
 export interface WorkspacePersistenceDriver {
   load(): Promise<unknown>;
-  save(snapshot: WorkspaceSnapshot): Promise<void>;
+  save(snapshot: WorkspaceSnapshot, expected?: { snapshot: WorkspaceSnapshot | undefined }): Promise<void>;
 }
 
 export class PersistentWorkspaceRepository implements WorkspaceRepository {
+  #queue: Promise<unknown> = Promise.resolve();
   private constructor(
     private readonly driver: WorkspacePersistenceDriver,
     private readonly memory: InMemoryWorkspaceRepository,
@@ -38,45 +40,42 @@ export class PersistentWorkspaceRepository implements WorkspaceRepository {
   }
 
   async createWorkspace(workspace: CreateWorkspace): Promise<Workspace> {
-    await this.refresh(false);
-    const result = await this.memory.createWorkspace(workspace);
-    await this.persist();
-    return result;
+    return this.mutate(async () => {
+      return this.memory.createWorkspace(workspace);
+    });
   }
 
   async createDashboard(scope: WorkspaceScope, dashboard: CreateDashboard): Promise<Dashboard> {
-    await this.refresh(false);
-    const result = await this.memory.createDashboard(scope, dashboard);
-    await this.persist();
-    return result;
+    return this.mutate(async () => {
+      return this.memory.createDashboard(scope, dashboard);
+    });
   }
 
   async createDataSource(
     scope: DataSourceScope,
     dataSource: CreateDataSource,
   ): Promise<DataSource> {
-    await this.refresh(false);
-    const result = await this.memory.createDataSource(scope, dataSource);
-    await this.persist();
-    return result;
+    return this.mutate(async () => {
+      return this.memory.createDataSource(scope, dataSource);
+    });
   }
 
   async deleteDashboard(scope: DashboardScope): Promise<void> {
-    await this.refresh(false);
-    await this.memory.deleteDashboard(scope);
-    await this.persist();
+    return this.mutate(async () => {
+      await this.memory.deleteDashboard(scope);
+    });
   }
 
   async deleteDataSource(scope: WorkspaceScope, dataSourceId: DataSourceId): Promise<void> {
-    await this.refresh(false);
-    await this.memory.deleteDataSource(scope, dataSourceId);
-    await this.persist();
+    return this.mutate(async () => {
+      await this.memory.deleteDataSource(scope, dataSourceId);
+    });
   }
 
   async deleteWorkspace(scope: WorkspaceScope): Promise<void> {
-    await this.refresh(false);
-    await this.memory.deleteWorkspace(scope);
-    await this.persist();
+    return this.mutate(async () => {
+      await this.memory.deleteWorkspace(scope);
+    });
   }
 
   listDashboards(scope: WorkspaceScope): Promise<readonly Dashboard[]> {
@@ -112,8 +111,10 @@ export class PersistentWorkspaceRepository implements WorkspaceRepository {
   }
 
   async refresh(notify = true): Promise<void> {
-    const stored = parseWorkspaceSnapshot(await this.driver.load());
-    this.memory.replace(stored, notify);
+    return this.serial(async () => {
+      const stored = parseWorkspaceSnapshot(await this.driver.load());
+      this.memory.replace(stored, notify);
+    });
   }
 
   async updateDataSource(
@@ -122,15 +123,14 @@ export class PersistentWorkspaceRepository implements WorkspaceRepository {
     expectedRevision: number,
     value: JsonValue,
   ): Promise<DataSource> {
-    await this.refresh(false);
-    const result = await this.memory.updateDataSource(
-      scope,
-      dataSourceId,
-      expectedRevision,
-      value,
-    );
-    await this.persist();
-    return result;
+    return this.mutate(async () => {
+      return this.memory.updateDataSource(
+        scope,
+        dataSourceId,
+        expectedRevision,
+        value,
+      );
+    });
   }
 
   async writeDashboardLayout(
@@ -138,31 +138,29 @@ export class PersistentWorkspaceRepository implements WorkspaceRepository {
     expectedRevision: number,
     widgets: readonly WidgetInstance[],
   ): Promise<DashboardLayoutSnapshot> {
-    await this.refresh(false);
-    const result = await this.memory.writeDashboardLayout(scope, expectedRevision, widgets);
-    await this.persist();
-    return result;
+    return this.mutate(async () => {
+      return this.memory.writeDashboardLayout(scope, expectedRevision, widgets);
+    });
   }
 
-  private async persist(): Promise<void> {
-    await this.driver.save(await this.memory.snapshot());
+  private mutate<T>(operation: () => Promise<T>): Promise<T> {
+    return this.serial(async () => {
+      const stored = parseWorkspaceSnapshot(await this.driver.load());
+      this.memory.replace(stored, false);
+      try {
+        const result = await operation();
+        await this.driver.save(parseWorkspaceSnapshot(await this.memory.snapshot())!, { snapshot: stored });
+        return result;
+      } catch (error) {
+        this.memory.replace(parseWorkspaceSnapshot(await this.driver.load()), true);
+        throw error;
+      }
+    });
+  }
+
+  private serial<T>(operation: () => Promise<T>): Promise<T> {
+    const work = this.#queue.then(operation);
+    this.#queue = work.catch(() => undefined);
+    return work;
   }
 }
-
-export const parseWorkspaceSnapshot = (input: unknown): WorkspaceSnapshot | undefined => {
-  if (input === undefined || input === null) {
-    return undefined;
-  }
-  if (!isRecord(input) || input.version !== 1) {
-    throw new Error("Unsupported workspace data format");
-  }
-  for (const key of ["workspaces", "dashboards", "widgets", "dataSources"] as const) {
-    if (!Array.isArray(input[key])) {
-      throw new Error(`Invalid workspace data: ${key} must be an array`);
-    }
-  }
-  return input as unknown as WorkspaceSnapshot;
-};
-
-const isRecord = (input: unknown): input is Record<string, unknown> =>
-  typeof input === "object" && input !== null && !Array.isArray(input);

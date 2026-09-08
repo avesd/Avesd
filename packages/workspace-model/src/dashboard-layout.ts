@@ -1,3 +1,4 @@
+import type { WidgetWorkspaceCapability } from "./workspace-catalog";
 import type {
   DashboardLayoutSnapshot,
   DashboardScope,
@@ -31,6 +32,7 @@ export interface RangeWidgetSizePolicy {
 export type WidgetSizePolicy = FixedWidgetSizePolicy | RangeWidgetSizePolicy;
 
 export interface WidgetDefinition {
+  readonly capabilities?: readonly WidgetWorkspaceCapability[];
   readonly defaultConfiguration: JsonObject;
   readonly configurationVersion: number;
   readonly defaultSize: WidgetSize;
@@ -295,7 +297,7 @@ export class DashboardLayoutCoordinator implements DashboardLayoutService {
       }
     }
 
-    assertLayout(widgets);
+    assertDashboardLayout(widgets);
     return this.#repository.writeDashboardLayout(
       scope,
       command.expectedRevision,
@@ -375,7 +377,7 @@ const assertSupportedSize = (
   }
 };
 
-const assertLayout = (widgets: readonly WidgetInstance[]): void => {
+export const assertDashboardLayout = (widgets: readonly WidgetInstance[]): void => {
   for (const widget of widgets) {
     assertPlacement(widget.placement);
   }
