@@ -1,3 +1,10 @@
+/**
+ * @author Avesd
+ * @package Scripts
+ * @namespace Root
+ * @description Validate Repository Boundaries
+ */
+
 import { builtinModules } from "node:module";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";

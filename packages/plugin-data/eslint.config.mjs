@@ -1,3 +1,10 @@
-import config from "@avesd/configuration/eslint";
+/**
+ * @author Avesd
+ * @package Plugin Data
+ * @namespace Root
+ * @description ESLint Config
+ */
 
-export default config;
+import { createAvesdConfig } from "@avesd/configuration/eslint";
+
+export default createAvesdConfig(import.meta.dirname);

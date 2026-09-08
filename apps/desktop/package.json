@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "preview": "electron-vite preview",
     "test": "vitest run",
-    "test:electron": "node tests/web-surface.electron.mjs && node tests/local-plugins.electron.mjs && node tests/dashboard-navigation.electron.mjs"
+    "test:electron": "node tests/electron/run.mjs"
   },
   "dependencies": {
     "@agentclientprotocol/codex-acp": "catalog:",
@@ -19,11 +19,16 @@
     "@avesd/plugin-api": "workspace:*",
     "@avesd/plugin-data": "workspace:*",
     "@avesd/plugin-ui": "workspace:*",
+    "@avesd/ui": "workspace:*",
     "@avesd/workspace-model": "workspace:*",
     "@modelcontextprotocol/server": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "zod": "catalog:"
+    "react-markdown": "catalog:",
+    "remark-gfm": "catalog:",
+    "zod": "catalog:",
+    "@agentclientprotocol/claude-agent-acp": "catalog:",
+    "lucide-react": "catalog:"
   },
   "devDependencies": {
     "@avesd/configuration": "workspace:*",

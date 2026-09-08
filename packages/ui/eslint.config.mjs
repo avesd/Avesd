@@ -1,6 +1,6 @@
 /**
  * @author Avesd
- * @package Workspace Model
+ * @package UI
  * @namespace Root
  * @description ESLint Config
  */

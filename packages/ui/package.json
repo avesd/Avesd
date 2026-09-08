@@ -1,0 +1,22 @@
+{
+  "name": "@avesd/ui",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "compile": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint ."
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css"
+  },
+  "dependencies": {
+    "react": "catalog:"
+  },
+  "devDependencies": {
+    "@avesd/configuration": "workspace:*",
+    "@types/react": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

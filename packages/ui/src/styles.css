@@ -1,0 +1,133 @@
+:root {
+  --avesd-color-text: #20221f;
+  --avesd-color-text-strong: #353832;
+  --avesd-color-text-muted: #777970;
+  --avesd-color-accent: #536b48;
+  --avesd-color-accent-soft: #e7eee0;
+  --avesd-color-surface: #fafbf7;
+  --avesd-color-surface-raised: #fff;
+  --avesd-color-surface-hover: #eef0e9;
+  --avesd-color-border: #dddfd6;
+  --avesd-color-border-subtle: #e6e8df;
+  --avesd-color-danger: #984b40;
+  --avesd-focus-ring: #647d57;
+  --avesd-radius-small: 7px;
+  --avesd-radius-medium: 10px;
+  --avesd-radius-large: 14px;
+  --avesd-space-1: 4px;
+  --avesd-space-2: 8px;
+  --avesd-space-3: 12px;
+  --avesd-space-4: 16px;
+  --avesd-space-6: 24px;
+  --avesd-rail-width: 48px;
+  --avesd-panel-width: 440px;
+}
+
+.avesd-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.avesd-button.is-small { min-height: 28px; padding: 5px 9px; font-size: 11px; }
+.avesd-button.is-medium { min-height: 34px; padding: 7px 12px; font-size: 12px; }
+.avesd-button.is-primary { color: #f8faf5; background: var(--avesd-color-accent); }
+.avesd-button.is-secondary { color: #46543f; border-color: var(--avesd-color-border); background: var(--avesd-color-surface-raised); }
+.avesd-button.is-ghost { color: var(--avesd-color-text-muted); background: transparent; }
+.avesd-button.is-danger { color: #fff; background: var(--avesd-color-danger); }
+.avesd-button:hover:not(:disabled) { filter: brightness(.97); }
+.avesd-button:disabled { opacity: .45; cursor: default; }
+.avesd-button-leading { display: grid; place-items: center; }
+
+.avesd-icon-button {
+  display: grid;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--avesd-radius-medium);
+  color: var(--avesd-color-text-muted);
+  background: transparent;
+  cursor: pointer;
+  place-items: center;
+}
+.avesd-icon-button.is-small { width: 28px; height: 28px; }
+.avesd-icon-button.is-medium { width: 34px; height: 34px; }
+.avesd-icon-button:hover:not(:disabled) { background: var(--avesd-color-surface-hover); }
+.avesd-icon-button:disabled { opacity: .4; cursor: default; }
+
+.avesd-button:focus-visible,
+.avesd-icon-button:focus-visible,
+.avesd-tool-rail-button:focus-visible {
+  outline: 2px solid var(--avesd-focus-ring);
+  outline-offset: 2px;
+}
+
+.avesd-tool-rail {
+  position: fixed;
+  inset: 0 0 0 auto;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: var(--avesd-rail-width);
+  padding: 12px 5px;
+  border-left: 1px solid var(--avesd-color-border);
+  background: #f8f9f4;
+}
+[data-sidebar-side="left"] .avesd-tool-rail { inset: 0 auto 0 0; border-right: 1px solid var(--avesd-color-border); border-left: 0; }
+.avesd-tool-rail-button {
+  display: grid;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  color: #71786b;
+  background: transparent;
+  cursor: pointer;
+  place-items: center;
+}
+.avesd-tool-rail-button:hover:not(:disabled) { color: #35432f; background: #ecefe6; }
+.avesd-tool-rail-button[aria-expanded="true"],
+.avesd-tool-rail-button[aria-pressed="true"] { color: #35492b; background: #e1e8d9; }
+.avesd-tool-rail-button:disabled { opacity: .4; cursor: default; }
+.avesd-tool-rail-button.is-bottom { margin-top: auto; }
+
+.avesd-side-panel {
+  position: fixed;
+  inset: 0 var(--avesd-rail-width) 0 auto;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  width: min(var(--avesd-panel-width), calc(100vw - var(--avesd-rail-width)));
+  height: 100dvh;
+  overflow: hidden;
+  border: 0;
+  border-left: 1px solid var(--avesd-color-border);
+  background: var(--avesd-color-surface);
+  box-shadow: -12px 0 32px rgb(38 39 34 / 7%);
+}
+[data-sidebar-side="left"] .avesd-side-panel {
+  inset: 0 auto 0 var(--avesd-rail-width);
+  border-right: 1px solid var(--avesd-color-border);
+  border-left: 0;
+  box-shadow: 12px 0 32px rgb(38 39 34 / 7%);
+}
+
+.avesd-panel-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  min-height: 62px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--avesd-color-border-subtle);
+}
+.avesd-panel-header h2 { margin: 0; color: var(--avesd-color-text-strong); font-size: 16px; font-weight: 650; }
+.avesd-panel-header h2:focus { outline: none; }
+.avesd-panel-header-actions { display: flex; align-items: center; gap: 4px; margin-inline-start: auto; }

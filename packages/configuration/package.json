@@ -14,9 +14,8 @@
     "./vitest": "./vitest/index.ts"
   },
   "dependencies": {
-    "@eslint/js": "catalog:",
-    "eslint-plugin-react-hooks": "catalog:",
-    "globals": "catalog:",
+    "@stylistic/eslint-plugin": "catalog:",
+    "eslint-plugin-simple-import-sort": "catalog:",
     "typescript-eslint": "catalog:",
     "vitest": "catalog:"
   },
