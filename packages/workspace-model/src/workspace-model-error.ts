@@ -1,3 +1,10 @@
+/**
+ * @author Avesd
+ * @package Workspace Model
+ * @namespace Root
+ * @description Workspace Model Error
+ */
+
 export type WorkspaceModelErrorCode =
   | "already-exists"
   | "not-found"
@@ -5,11 +12,11 @@ export type WorkspaceModelErrorCode =
   | "scope-mismatch";
 
 export class WorkspaceModelError extends Error {
-  constructor(
-    readonly code: WorkspaceModelErrorCode,
-    message: string,
-  ) {
-    super(message);
-    this.name = "WorkspaceModelError";
-  }
+    constructor(
+        readonly code: WorkspaceModelErrorCode,
+        message: string,
+    ) {
+        super(message);
+        this.name = "WorkspaceModelError";
+    }
 }

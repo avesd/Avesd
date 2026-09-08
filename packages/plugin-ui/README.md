@@ -26,7 +26,19 @@ input bindings; directory responses never contain widget or data-source contents
 The host checks the active instance and capability on every call. Mounting
 workspace/dashboard IDs stay fixed; subscriptions end when the widget aborts.
 
-See the root README for the narrower local module format and authoring tools.
+Optional `files` and `sqlite` capabilities provide private workspace+plugin
+storage through host services. All database calls reauthorize the caller; SQL
+queries are read-only and mutations use transactions. These services do not expose
+Node, Electron, absolute paths, or other plugins' private storage.
+
+The `resources` capability adds workspace-scoped publication, metadata discovery,
+and file/database facades gated by explicit host grants. Publishing requires the
+corresponding private storage capability. Consumers need only `resources`; they
+cannot grant access or select the publisher's paths. The host rechecks access on
+every call, including after revocation. Contract schemas are descriptive.
+
+See the root README for the local module format, storage limits, sharing workflow,
+and authoring tools.
 
 The desktop's trusted built-in Web page widget uses a host-managed native view
 through a desktop-only typed service. It does not add Electron objects to this
