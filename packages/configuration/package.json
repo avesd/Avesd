@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "compile": "tsc --noEmit -p tsconfig.json",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "node --test test/unit/eslint/rules/*.test.mjs"
   },
   "exports": {
     "./eslint": "./eslint/create-avesd-config.mjs",

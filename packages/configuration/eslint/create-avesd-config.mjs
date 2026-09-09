@@ -5,11 +5,13 @@
  * @description Create Avesd Config
  */
 
+import { bodyLeadingBlankLine } from "./rules/body-leading-blank-line.mjs";
 import stylistic from "@stylistic/eslint-plugin";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
 import typescriptEslint from "typescript-eslint";
 
 export const createAvesdConfig = (tsconfigRootDir = import.meta.dirname) => {
+
     return [
         {
             ignores: [
@@ -30,11 +32,13 @@ export const createAvesdConfig = (tsconfigRootDir = import.meta.dirname) => {
         },
         {
             plugins: {
+                avesd: { rules: { "body-leading-blank-line": bodyLeadingBlankLine } },
                 "@typescript-eslint": typescriptEslint.plugin,
                 "@stylistic": stylistic,
                 "simple-import-sort": simpleImportSort,
             },
             rules: {
+                "avesd/body-leading-blank-line": "error",
                 "arrow-body-style": [
                     "error",
                     "always",
@@ -200,6 +204,11 @@ export const createAvesdConfig = (tsconfigRootDir = import.meta.dirname) => {
                     {
                         blankLine: "always",
                         prev: "*",
+                        next: "return",
+                    },
+                    {
+                        blankLine: "always",
+                        prev: "*",
                         next: "import",
                     },
                     {
@@ -275,10 +284,7 @@ export const createAvesdConfig = (tsconfigRootDir = import.meta.dirname) => {
         },
         {
             files: ["**/*.{ts,tsx}"],
-            ignores: [
-                "**/*.d.ts",
-                "**/test/**",
-            ],
+            ignores: ["**/*.d.ts"],
             languageOptions: {
                 parserOptions: {
                     projectService: {

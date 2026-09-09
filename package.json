@@ -11,7 +11,7 @@
     "depcheck": "pnpm outdated -r",
     "dev": "pnpm --filter @avesd/desktop dev",
     "iud": "pnpm install && pnpm update -r && pnpm dedupe && pnpm run self-update",
-    "lint": "turbo lint && pnpm validate-repository-boundaries",
+    "lint": "eslint scripts eslint.config.mjs && turbo lint && pnpm validate-repository-boundaries",
     "self-update": "corepack use pnpm@latest",
     "test": "turbo test",
     "test:electron": "pnpm build && pnpm --filter @avesd/desktop test:electron",
