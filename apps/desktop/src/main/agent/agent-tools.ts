@@ -69,11 +69,11 @@ export const agentToolDefinitions = {
         }),
     },
     avesd_inspect_dashboard: {
-        description: "Inspect the current dashboard, live widget catalog, and visible data sources.",
+        description: "Inspect the current dashboard, the authoritative live widget catalog contributed by installed plugins, and visible data sources. Call this before designing or changing a dashboard: reuse a catalog widget type by adding an instance and configuring its bindings. Create a plugin draft only when no available type can provide the requested reusable capability.",
         schema: z.object({}),
     },
     avesd_add_widget: {
-        description: "Add an installed widget type to the active dashboard.",
+        description: "Create one instance of a widget type from the inspected installed-plugin catalog on the active dashboard. This creates dashboard layout state; it does not create or modify a plugin.",
         schema: z.object({
             pluginId: z.string(),
             widgetTypeId: z.string(),

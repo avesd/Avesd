@@ -1,12 +1,31 @@
 # Local widgets
 
+## Composition before authoring
+
+An installed plugin contributes reusable widget types to Avesd's live widget
+catalog. A dashboard contains instances of those types: their layout,
+configuration, bindings, and local dashboard context. It does not contain or
+create a plugin.
+
+When asked to build or change a dashboard, an ACP agent first calls
+`avesd_inspect_dashboard` and composes the result from `availableWidgetTypes`,
+available data sources, and bindings. It creates instances with
+`avesd_add_widget`. This is the normal path, including when a dashboard is
+newly created.
+
+Author a local plugin only when the installed catalog has a real reusable
+capability gap. A plugin is not a container for one dashboard's content or a
+one-off implementation of its layout. After activation it contributes a type
+to the catalog, which can then be instantiated on this or other dashboards.
+
 ## Authoring lifecycle
 
-An ACP session receives the Avesd stdio MCP server. For a new widget, ask the
-Agent to read `avesd_get_widget_sdk`, create a draft, write its JavaScript and
-interaction tests, run them, inspect the returned preview, activate the passing
-revision, and add the widget to the dashboard. These are real host tools; a
-successful chat response alone is not a test or installation result.
+An ACP session receives the Avesd stdio MCP server. When the catalog has such a
+gap, ask the Agent to read `avesd_get_widget_sdk`, create a draft, write its
+JavaScript and interaction tests, run them, inspect the returned preview,
+activate the passing revision, and add an instance to the dashboard. These are
+real host tools; a successful chat response alone is not a test or installation
+result.
 
 The first authoring format contains one manifest, one JavaScript ES module, and
 declarative tests. The module exports `mount(root, { signal })` and returns
