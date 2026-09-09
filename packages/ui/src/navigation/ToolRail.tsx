@@ -5,7 +5,7 @@
  * @description Tool Rail
  */
 
-import { classNames } from "../shared/class-names";
+import { cn } from "../shared/cn";
 import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
 import { forwardRef } from "react";
 
@@ -15,7 +15,7 @@ export interface ToolRailProps extends HTMLAttributes<HTMLElement> {
 
 export function ToolRail({ className, children, ...props }: ToolRailProps) {
     return <nav
-        className={classNames("avesd-tool-rail", className)}
+        className={cn("avesd-tool-rail", className)}
         {...props}
     >
         {children}
@@ -33,7 +33,7 @@ export const ToolRailButton = forwardRef<HTMLButtonElement, ToolRailButtonProps>
 ) {
     return <button
         ref={ref}
-        className={classNames("avesd-tool-rail-button", placement === "bottom" && "is-bottom", className)}
+        className={cn("avesd-tool-rail-button", placement === "bottom" && "is-bottom", className)}
         type={type}
         {...props}
     >

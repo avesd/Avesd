@@ -5,7 +5,7 @@
  * @description Side Panel
  */
 
-import { classNames } from "../shared/class-names";
+import { cn } from "../shared/cn";
 import type { HTMLAttributes, ReactNode, RefObject } from "react";
 
 export interface SidePanelProps extends HTMLAttributes<HTMLElement> {
@@ -14,7 +14,7 @@ export interface SidePanelProps extends HTMLAttributes<HTMLElement> {
 
 export function SidePanel({ className, children, ...props }: SidePanelProps) {
     return <section
-        className={classNames("avesd-side-panel", className)}
+        className={cn("avesd-side-panel", className)}
         role="dialog"
         {...props}
     >
@@ -31,7 +31,7 @@ export type PanelHeaderProps = Omit<HTMLAttributes<HTMLElement>, "title"> & {
 
 export function PanelHeader({ actions, className, leading, title, titleRef, ...props }: PanelHeaderProps) {
     return <header
-        className={classNames("avesd-panel-header", className)}
+        className={cn("avesd-panel-header", className)}
         {...props}
     >
         {leading}

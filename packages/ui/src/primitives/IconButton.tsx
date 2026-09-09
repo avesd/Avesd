@@ -5,7 +5,7 @@
  * @description Icon Button
  */
 
-import { classNames } from "../shared/class-names";
+import { cn } from "../shared/cn";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "aria-label" | "children"> {
@@ -16,7 +16,7 @@ export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEle
 
 export function IconButton({ className, children, size = "medium", type = "button", ...props }: IconButtonProps) {
     return <button
-        className={classNames("avesd-icon-button", `is-${size}`, className)}
+        className={cn("avesd-icon-button", `is-${size}`, className)}
         type={type}
         {...props}
     >

@@ -5,7 +5,7 @@
  * @description Button
  */
 
-import { classNames } from "../shared/class-names";
+import { cn } from "../shared/cn";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -16,7 +16,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 export function Button({ className, children, leading, size = "medium", type = "button", variant = "secondary", ...props }: ButtonProps) {
     return <button
-        className={classNames("avesd-button", `is-${variant}`, `is-${size}`, className)}
+        className={cn("avesd-button", `is-${variant}`, `is-${size}`, className)}
         type={type}
         {...props}
     >

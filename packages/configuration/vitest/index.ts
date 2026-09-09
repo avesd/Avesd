@@ -5,10 +5,11 @@
  * @description Configuration exports
  */
 
-import { defineConfig } from "vitest/config";
+import type { ViteUserConfig } from "vitest/config";
+import { defineConfig, mergeConfig } from "vitest/config";
 
-export const createVitestConfig = () => {
-    return defineConfig({
+export const createVitestConfig = (overrides: ViteUserConfig = {}) => {
+    return mergeConfig(defineConfig({
         test: {
             coverage: {
                 reporter: [
@@ -18,6 +19,5 @@ export const createVitestConfig = () => {
             },
             passWithNoTests: false,
         },
-    });
+    }), overrides);
 };
-
