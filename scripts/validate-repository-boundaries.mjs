@@ -6,9 +6,10 @@
  */
 
 import { builtinModules } from "node:module";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 
 const repositoryRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const violations = [];
@@ -30,6 +31,15 @@ const listSourceFiles = (root) => readdirSync(root, { withFileTypes: true }).fla
 });
 
 const relativePath = (path) => path.slice(repositoryRoot.length + 1);
+
+for (const directory of listDirectories(join(repositoryRoot, "packages"))) {
+  const path = join(directory, "src/index.ts");
+  if (!existsSync(path)) continue;
+  const source = ts.createSourceFile(path, readFileSync(path, "utf8"), ts.ScriptTarget.Latest);
+  if (source.statements.some((statement) => !ts.isExportDeclaration(statement) || !statement.moduleSpecifier)) {
+    violations.push(`${relativePath(path)}: package index must contain re-exports only`);
+  }
+}
 
 const packageJsonPaths = [
   join(repositoryRoot, "package.json"),

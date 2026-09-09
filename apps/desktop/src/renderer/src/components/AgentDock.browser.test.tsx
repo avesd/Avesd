@@ -5,13 +5,15 @@
  * @description Agent Dock Browser Test
  */
 
+import "../styles.css";
+import "@avesd/ui/styles.css";
 import { DashboardEditingProvider, useDashboardEditing } from "../workbench/dashboard-editing";
 import { WorkbenchChrome } from "../workbench/WorkbenchChrome";
 import { AgentDock } from "./AgentDock";
 import type { AgentEvent, AgentService, AgentSettings } from "@avesd/plugin-api";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { page } from "vitest/browser";
+import { page, userEvent } from "vitest/browser";
 
 const preferences = {
     getSidebarSide: async () => {
@@ -98,8 +100,9 @@ describe("AgentDock", () => {
         await page.getByRole("button", { name: "Open agent" }).click();
         await expect.element(page.getByRole("dialog", { name: "Workspace agent" })).toBeVisible();
         expect(service.connect).not.toHaveBeenCalled();
-        await expect.element(page.getByRole("combobox", { name: "Agent provider" })).toBeDisabled();
-        await expect.element(page.getByRole("combobox", { name: "Agent model" })).toBeDisabled();
+        await expect.element(page.getByRole("button", { name: "ACP harness" })).toBeDisabled();
+        await expect.element(page.getByRole("button", { name: "Agent model" })).toBeDisabled();
+        await expect.element(page.getByRole("button", { name: /coming soon/ })).not.toBeInTheDocument();
         await page.getByRole("button", {
             name: "Unlock dashboard",
             exact: true,
@@ -113,8 +116,7 @@ describe("AgentDock", () => {
         }).click();
         await expect.element(page.getByText("Locked", { exact: true })).toBeVisible();
         await page.getByRole("button", { name: "Open settings" }).click();
-        await page.getByRole("radio", {
-            name: "Left",
+        await page.getByText("Left", {
             exact: true,
         }).click();
         await expect.element(page.getByRole("radio", {
@@ -149,7 +151,10 @@ describe("AgentDock", () => {
 });
 
 it("applies live model selections and clears the old conversation on provider change", async () => {
+    await page.viewport(900, 700);
     let listener: ((event: AgentEvent) => void) | undefined;
+    let pendingModelChange = Promise.resolve();
+    let failModelChange = false;
     let settings: AgentSettings = {
         status: "connected",
         providerId: "codex",
@@ -171,6 +176,17 @@ it("applies live model selections and clears the old conversation on provider ch
             },
         ],
         modelId: "fast",
+        effortId: "medium",
+        efforts: [
+            {
+                id: "medium",
+                name: "Medium",
+            },
+            {
+                id: "high",
+                name: "High",
+            },
+        ],
         models: [
             {
                 id: "fast",
@@ -187,10 +203,24 @@ it("applies live model selections and clears the old conversation on provider ch
             return settings;
         },
         selectModel: vi.fn(async id => {
+            await pendingModelChange;
+            if (failModelChange) {
+                throw new Error("Synthetic model selection failure");
+            }
             settings = {
                 ...settings,
                 modelId: id,
             }; listener?.({
+                type: "settings",
+                settings,
+            });
+        }),
+        selectEffort: vi.fn(async id => {
+            settings = {
+                ...settings,
+                effortId: id,
+            };
+            listener?.({
                 type: "settings",
                 settings,
             });
@@ -209,15 +239,12 @@ it("applies live model selections and clears the old conversation on provider ch
         }),
         connect: async () => {
         },
-        cancel: async () => {
-        },
+        cancel: vi.fn(async () => {
+        }),
         prompt: async () => {
             listener?.({
                 type: "messageChunk",
                 text: "Synthetic response",
-            }); listener?.({
-                type: "turnComplete",
-                stopReason: "end_turn",
             });
         },
         subscribe: next => {
@@ -239,16 +266,129 @@ it("applies live model selections and clears the old conversation on provider ch
             </WorkbenchChrome>
         </DashboardEditingProvider>);
         await page.getByRole("button", { name: "Open agent" }).click();
-        await expect.element(page.getByRole("option", { name: "OpenCode · Not installed" })).toBeDisabled();
-        await page.getByRole("combobox", { name: "Agent model" }).selectOptions("deep");
+        const harness = page.getByRole("button", { name: "ACP harness" });
+        const model = page.getByRole("button", { name: "Agent model" });
+        const effort = page.getByRole("button", { name: "Reasoning effort" });
+        await expect.element(effort).toHaveTextContent("Medium");
+        await effort.click();
+        await expect.poll(() => {
+            return document.getAnimations().filter(animation => {
+                return animation.playState === "running";
+            }).length;
+        }).toBe(0);
+        await page.getByRole("menuitemradio", {
+            name: "High",
+            exact: true,
+        }).click();
+        expect(service.selectEffort).toHaveBeenCalledWith("high");
+        expect(service.selectModel).not.toHaveBeenCalled();
+        await expect.element(effort).toHaveTextContent("High");
+        await expect.element(model).toHaveTextContent("Fast");
+        await expect.element(harness).toHaveTextContent("Codex");
+        await harness.click();
+        await expect.element(page.getByRole("menuitemradio", { name: "OpenCode Not installed" })).toHaveAttribute("aria-disabled", "true");
+        await expect.element(page.getByRole("menuitemradio", {
+            name: "Codex",
+            exact: true,
+        })).toHaveAttribute("aria-checked", "true");
+        await expect.poll(() => {
+            return document.getAnimations().filter(animation => {
+                return animation.playState === "running";
+            }).length;
+        }).toBe(0);
+        await userEvent.keyboard("{Escape}");
+        await expect.element(page.getByRole("dialog", { name: "Workspace agent" })).toBeVisible();
+        await expect.element(harness).toHaveFocus();
+        await model.click();
+        await page.getByRole("menuitemradio", {
+            name: "Deep",
+            exact: true,
+        }).click();
         expect(service.selectModel).toHaveBeenCalledWith("deep");
-        await expect.element(page.getByRole("combobox", { name: "Agent model" })).toHaveValue("deep");
+        await expect.element(model).toHaveTextContent("Deep");
+        await model.click();
+        await expect.poll(() => {
+            return document.getAnimations().filter(animation => {
+                return animation.playState === "running";
+            }).length;
+        }).toBe(0);
+        await expect.poll(() => {
+            return document.getAnimations().filter(animation => {
+                return animation.playState === "running";
+            }).length;
+        }).toBe(0);
+        await expect.element(page.getByRole("menuitemradio", {
+            name: "Deep",
+            exact: true,
+        })).toHaveAttribute("aria-checked", "true");
+        await page.getByRole("menuitemradio", {
+            name: "Deep",
+            exact: true,
+        }).click();
+        expect(service.selectModel).toHaveBeenCalledTimes(1);
+
+        failModelChange = true;
+        await model.click();
+        await page.getByRole("menuitemradio", {
+            name: "Fast",
+            exact: true,
+        }).click();
+        await expect.element(page.getByRole("alert")).toHaveTextContent("Model change failed.");
+        await expect.element(model).toHaveTextContent("Deep");
+        await expect.element(page.getByRole("button", {
+            name: "Retry",
+            exact: true,
+        })).not.toBeInTheDocument();
+        failModelChange = false;
+        let finishModelChange = () => {
+        };
+        pendingModelChange = new Promise<void>(resolve => {
+            finishModelChange = resolve;
+        });
+        await model.click();
+        await page.getByRole("menuitemradio", {
+            name: "Fast",
+            exact: true,
+        }).click();
+        await expect.element(model).toBeDisabled();
+        await expect.element(harness).toBeDisabled();
+        finishModelChange();
+        await expect.element(model).toBeEnabled();
+        await expect.element(model).toHaveTextContent("Fast");
+
         await page.getByRole("textbox", { name: "Message agent" }).fill("Synthetic prompt");
         await page.getByRole("button", { name: "Send message" }).click();
         await expect.element(page.getByText("Synthetic response")).toBeVisible();
-        await page.getByRole("combobox", { name: "Agent provider" }).selectOptions("claude");
+        await expect.element(model).toBeDisabled();
+        await expect.element(harness).toBeDisabled();
+        await page.getByRole("button", { name: "Stop agent" }).click();
+        expect(service.cancel).toHaveBeenCalledOnce();
+        listener?.({
+            type: "turnComplete",
+            stopReason: "cancelled",
+        });
+        await harness.click();
+        await page.getByRole("menuitemradio", {
+            name: "Claude Code",
+            exact: true,
+        }).click();
         expect(service.selectProvider).toHaveBeenCalledWith("claude");
         await expect.element(page.getByText("Synthetic response")).not.toBeInTheDocument();
-        await expect.element(page.getByRole("combobox", { name: "Agent model" })).toHaveValue("fast");
+        await expect.element(model).toHaveTextContent("Fast");
+        await expect.element(harness).toHaveTextContent("Claude Code");
+        await page.viewport(360, 640);
+        await model.click();
+        await expect.element(page.getByRole("menu", { name: "Agent model" })).toBeVisible();
+        await expect.poll(() => {
+            return document.getAnimations().filter(animation => {
+                return animation.playState === "running";
+            }).length;
+        }).toBe(0);
+        const bounds = page.getByRole("menu", { name: "Agent model" }).element()
+            .getBoundingClientRect();
+        expect(bounds.left).toBeGreaterThanOrEqual(0);
+        expect(bounds.right).toBeLessThanOrEqual(360);
+        await userEvent.keyboard("{Escape}");
+        await expect.element(page.getByRole("dialog", { name: "Workspace agent" })).toBeVisible();
     } finally { root.unmount(); container.remove(); }
 });

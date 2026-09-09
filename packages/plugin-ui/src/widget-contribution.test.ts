@@ -2,11 +2,11 @@
  * @author Avesd
  * @package Plugin UI
  * @namespace Root
- * @description Index Test
+ * @description Widget Contribution Test
  */
 
-import type { WidgetContribution } from "./index";
-import { dashboardWidgetContribution } from "./index";
+import type { WidgetContribution } from "./widget-contribution";
+import { dashboardWidgetContribution } from "./widget-contribution";
 import { describe, expect, it, vi } from "vitest";
 
 describe("widget UI contract", () => {

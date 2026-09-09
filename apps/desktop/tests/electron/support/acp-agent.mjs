@@ -10,8 +10,26 @@ import { createInterface } from "node:readline";
 
 const provider = process.argv[2] ?? "codex";
 let model = "fast";
+let effort = "medium";
 const config = () => {
     return [
+        {
+            id: "reasoning_effort",
+            name: "Reasoning effort",
+            category: "thought_level",
+            type: "select",
+            currentValue: effort,
+            options: [
+                {
+                    value: "medium",
+                    name: "Medium",
+                },
+                {
+                    value: "high",
+                    name: "High",
+                },
+            ],
+        },
         {
             id: "model",
             name: "Model",
@@ -84,7 +102,12 @@ createInterface({ input: process.stdin }).on("line", line => {
                 },
             });
         }
-        model = params.value;
+        if (params.configId === "reasoning_effort") {
+            effort = params.value;
+        }
+        else {
+            model = params.value;
+        }
         send({
             method: "session/update",
             params: {

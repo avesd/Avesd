@@ -3,6 +3,10 @@
   "references": [
     { "path": "./packages/configuration" },
     { "path": "./packages/plugin-api" },
+    { "path": "./packages/workspace-model" },
+    { "path": "./packages/plugin-data" },
+    { "path": "./packages/plugin-ui" },
+    { "path": "./packages/ui" },
     { "path": "./packages/kernel" },
     { "path": "./packages/acp-client" },
     { "path": "./apps/desktop" }

@@ -7,11 +7,11 @@
     "lint": "eslint ."
   },
   "exports": {
-    "./eslint": "./eslint/index.mjs",
+    "./eslint": "./eslint/create-avesd-config.mjs",
     "./typescript/base": "./typescript/tsconfig.base.json",
     "./typescript/node": "./typescript/tsconfig.node.json",
     "./typescript/react": "./typescript/tsconfig.react.json",
-    "./vitest": "./vitest/index.ts"
+    "./vitest": "./vitest/create-vitest-config.ts"
   },
   "dependencies": {
     "@stylistic/eslint-plugin": "catalog:",

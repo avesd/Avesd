@@ -21,7 +21,7 @@ export default defineConfig({
             rollupOptions: {
                 external: ["electron"],
                 input: {
-                    index: "src/main/index.ts",
+                    index: "src/main/main.ts",
                     "workspace-mcp": "src/main/agent/workspace-mcp.ts",
                 },
             },
@@ -32,7 +32,7 @@ export default defineConfig({
             rollupOptions: {
                 external: ["electron"],
                 input: {
-                    index: "src/preload/index.ts",
+                    index: "src/preload/preload.ts",
                     "local-widget": "src/preload/local-widget.ts",
                 },
                 output: {

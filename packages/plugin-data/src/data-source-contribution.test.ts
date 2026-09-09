@@ -2,10 +2,10 @@
  * @author Avesd
  * @package Plugin Data
  * @namespace Root
- * @description Index Test
+ * @description Data Source Contribution Test
  */
 
-import { dataSourceContribution } from "./index";
+import { dataSourceContribution } from "./data-source-contribution";
 import { describe, expect, it } from "vitest";
 
 describe("data source plugin API", () => {

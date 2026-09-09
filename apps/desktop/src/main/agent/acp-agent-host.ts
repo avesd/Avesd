@@ -166,6 +166,8 @@ export class AcpAgentHost {
             agentName: this.#session?.agentName ?? this.#provider.name,
             modelId: this.#session?.models.id,
             models: this.#session?.models.choices ?? [],
+            effortId: this.#session?.efforts.id,
+            efforts: this.#session?.efforts.choices ?? [],
         };
     }
 
@@ -267,6 +269,22 @@ export class AcpAgentHost {
 
     async cancel(): Promise<void> {
         await this.#session?.cancel();
+    }
+
+    async selectEffort(id: string): Promise<void> {
+        this.#checkIdle();
+        const session = this.#session;
+        if (!session || typeof id !== "string" || id.length > 512) {
+            throw new Error("Connect before choosing reasoning effort.");
+        }
+        this.#changing = true;
+        try {
+            await session.selectEffort(id);
+            if (this.#disposed || this.#session !== session) {
+                throw new Error("This agent session has ended.");
+            }
+            this.publishSettings();
+        } finally { this.#changing = false; }
     }
 
     connect(): Promise<void> {

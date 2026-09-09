@@ -889,41 +889,33 @@ button {
   gap: 5px;
   min-width: 0;
 }
-.agent-composer-tool {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 30px;
-  flex-shrink: 0;
-  border: 0;
-  background: transparent;
-  font-size: 22px;
-}
-.agent-composer-tool:disabled, .agent-model-controls select:disabled {
-  color: #989b95;
-  opacity: 1;
-  cursor: not-allowed;
-}
 .agent-model-controls {
   display: flex;
-  gap: 2px;
-  margin-left: auto;
+  flex-wrap: wrap;
+  flex: 1;
+  gap: 4px;
   min-width: 0;
 }
-.agent-model-controls select {
+.agent-model-trigger {
   min-width: 0;
-  max-width: 128px;
-  padding: 5px 2px;
-  border: 0;
-  background: transparent;
-  font: 12px system-ui;
+  max-width: 100%;
+  gap: 5px;
+}
+.agent-selection-label { font-weight: 400; opacity: .75; margin-right: 3px; }
+.agent-model-trigger > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-model-trigger > svg { flex-shrink: 0; }
+.agent-model-trigger[data-state="open"] { background: var(--avesd-color-surface-hover); }
+.agent-selection-menu { width: 280px; }
+.agent-selection-menu .avesd-dropdown-title > span {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 520px) {
   .agent-composer { margin: 0 10px 10px; padding: 10px; }
   .agent-composer-footer { flex-wrap: wrap; }
   .agent-model-controls { order: -1; flex-basis: 100%; margin-bottom: 4px; }
-  .agent-model-controls select { flex: 1; max-width: 50%; }
+  .agent-model-trigger { max-width: 100%; }
   .agent-send { margin-left: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .agent-thinking i { animation: none; } }

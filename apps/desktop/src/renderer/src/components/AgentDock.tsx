@@ -13,8 +13,8 @@ import type { AgentConnectionStatus,
     AgentEvent,
     AgentService,
     AgentSettings } from "@avesd/plugin-api";
-import { Button, IconButton, SidePanel } from "@avesd/ui";
-import { ArrowUp, Bot, Mic, Plus, Sparkles, Square, X } from "lucide-react";
+import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItemContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger, IconButton, SidePanel } from "@avesd/ui";
+import { ArrowUp, Bot, ChevronDown, Sparkles, Square, X } from "lucide-react";
 import type { KeyboardEvent, SyntheticEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
@@ -53,6 +53,12 @@ export const AgentDock = ({ service }: {
         return provider.id === settings.providerId;
     })?.name ?? "Codex";
     const agentName = settings?.agentName ?? providerName;
+    const modelName = settings?.models.find(model => {
+        return model.id === settings.modelId;
+    })?.name ?? settings?.modelId;
+    const effortName = settings?.efforts?.find(effort => {
+        return effort.id === settings.effortId;
+    })?.name ?? settings?.effortId ?? "Default";
     const [
         activity,
         setActivity,
@@ -156,8 +162,9 @@ export const AgentDock = ({ service }: {
         }
     };
 
-    const changeSettings = async (kind: "provider" | "model", id: string) => {
-        if (busy || changingSettings || status === "connecting") {
+    const changeSettings = async (kind: "provider" | "model" | "effort", id: string) => {
+        const currentId = kind === "provider" ? settings?.providerId : kind === "model" ? settings?.modelId : settings?.effortId;
+        if (busy || changingSettings || status === "connecting" || id === currentId) {
             return;
         }
         setChangingSettings(true); setError(undefined);
@@ -165,15 +172,18 @@ export const AgentDock = ({ service }: {
             if (kind === "provider") {
                 await service.selectProvider?.(id);
             }
-            else {
+            else if (kind === "model") {
                 await service.selectModel?.(id);
+            }
+            else {
+                await service.selectEffort?.(id);
             }
             const value = await service.getSettings?.();
             if (value) {
                 setSettings(value); setStatus(value.status);
             }
         } catch {
-            setError(kind === "provider" ? "Could not connect to this provider. Check its local login, then retry." : "Model change failed. The current session settings are shown.");
+            setError(kind === "provider" ? "Could not connect to this provider. Check its local login, then retry." : `${kind === "model" ? "Model" : "Reasoning effort"} change failed. The current session settings are shown.`);
         } finally { setChangingSettings(false); }
     };
 
@@ -231,7 +241,7 @@ export const AgentDock = ({ service }: {
             aria-label="Workspace agent"
             className="agent-panel"
             onKeyDown={(event) => {
-                if (event.key === "Escape") {
+                if (event.key === "Escape" && !event.defaultPrevented && event.currentTarget.contains(event.target as Node)) {
                     closeAgent(); event.stopPropagation();
                 }
             }}
@@ -408,14 +418,15 @@ export const AgentDock = ({ service }: {
                     <span>
                         {error}
                     </span>
-                    <button
+                    {(status === "error" || status === "disconnected") && !providerUnavailable && <button
                         onClick={() => {
                             return void connect();
                         }}
                         type="button"
+                        disabled={changingSettings}
                     >
                         Retry
-                    </button>
+                    </button>}
                 </div>
             ) : null}
 
@@ -438,86 +449,187 @@ export const AgentDock = ({ service }: {
                 <div
                     className="agent-composer-footer"
                 >
-                    <button
-                        aria-label="Add attachment (coming soon)"
-                        className="agent-composer-tool"
-                        disabled
-                        title="Attachments are not available yet"
-                        type="button"
-                    >
-                        <Plus
-                            size={18}
-                            aria-hidden="true"
-                        />
-                    </button>
                     <div
                         className="agent-model-controls"
                     >
-                        <select
-                            aria-label="Agent provider"
-                            disabled={!service.selectProvider || !settings || busy || changingSettings || status === "connecting"}
-                            title="Changing provider starts a new conversation"
-                            value={settings?.providerId ?? "codex"}
-                            onChange={event => {
-                                return void changeSettings("provider", event.target.value);
-                            }}
-                        >
-                            {(settings?.providers ?? [
-                                {
-                                    id: "codex",
-                                    name: "Codex",
-                                    available: true,
-                                    unavailableReason: undefined,
-                                },
-                            ]).map(provider => {
-                                return <option
-                                    key={provider.id}
-                                    value={provider.id}
-                                    disabled={provider.available === false}
-                                >
-                                    {provider.name}
-                                    {provider.available === false ? ` · ${provider.unavailableReason ?? "Unavailable"}` : ""}
-                                </option>;
-                            })}
-                        </select>
-                        <select
-                            aria-label="Agent model"
-                            disabled={!service.selectModel || !settings?.models.length || busy || changingSettings || status !== "connected"}
-                            title={status !== "connected" ? "Connect to load models" : settings?.models.length ? "Model for this session" : "This provider does not expose model selection"}
-                            value={settings?.modelId ?? ""}
-                            onChange={event => {
-                                return void changeSettings("model", event.target.value);
-                            }}
-                        >
-                            {!settings?.models.some(model => {
-                                return model.id === settings.modelId;
-                            }) && <option
-                                value={settings?.modelId ?? ""}
+                        <DropdownMenu>
+                            <DropdownMenuTrigger
+                                asChild
                             >
-                                {settings?.modelId ?? (status === "connected" ? "Agent default" : "Connect for models")}
-                            </option>}
-                            {settings?.models.map(model => {
-                                return <option
-                                    key={model.id}
-                                    value={model.id}
+                                <Button
+                                    aria-label="ACP harness"
+                                    className="agent-model-trigger"
+                                    variant="ghost"
+                                    size="small"
+                                    disabled={!service.selectProvider || !settings || busy || changingSettings || status === "connecting"}
+                                    title="Changing harness starts a new conversation"
                                 >
-                                    {model.name}
-                                </option>;
-                            })}
-                        </select>
+                                    <span>
+                                        <span
+                                            className="agent-selection-label"
+                                        >
+                                            Harness
+                                        </span>
+                                        {" "}
+                                        {providerName}
+                                    </span>
+                                    <ChevronDown
+                                        size={12}
+                                        aria-hidden="true"
+                                    />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                aria-label="ACP harness"
+                                className="agent-selection-menu"
+                                side="top"
+                                align="start"
+                                margin="none"
+                                sideOffset={8}
+                                collisionPadding={8}
+                            >
+                                <DropdownMenuLabel
+                                    description="Changing harness starts a new conversation."
+                                >
+                                    ACP harness
+                                </DropdownMenuLabel>
+                                <DropdownMenuRadioGroup
+                                    value={settings?.providerId}
+                                    onValueChange={id => {
+                                        return void changeSettings("provider", id);
+                                    }}
+                                >
+                                    {settings?.providers.map(provider => {
+                                        return <DropdownMenuRadioItem
+                                            key={provider.id}
+                                            value={provider.id}
+                                            disabled={provider.available === false || busy || changingSettings || status === "connecting"}
+                                        >
+                                            <DropdownMenuItemContent
+                                                description={provider.available === false ? provider.unavailableReason ?? "Unavailable" : undefined}
+                                            >
+                                                {provider.name}
+                                            </DropdownMenuItemContent>
+                                        </DropdownMenuRadioItem>;
+                                    })}
+                                </DropdownMenuRadioGroup>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger
+                                asChild
+                            >
+                                <Button
+                                    aria-label="Agent model"
+                                    className="agent-model-trigger"
+                                    variant="ghost"
+                                    size="small"
+                                    disabled={!service.selectModel || !settings?.models.length || busy || changingSettings || status !== "connected"}
+                                    title={status !== "connected" ? "Connect to load models" : settings?.models.length ? "Model for this session" : "This provider does not expose model selection"}
+                                >
+                                    <span>
+                                        <span
+                                            className="agent-selection-label"
+                                        >
+                                            Model
+                                        </span>
+                                        {" "}
+                                        {modelName ?? (status === "connected" ? "Agent default" : "Connect for models")}
+                                    </span>
+                                    <ChevronDown
+                                        size={12}
+                                        aria-hidden="true"
+                                    />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                aria-label="Agent model"
+                                className="agent-selection-menu"
+                                side="top"
+                                align="end"
+                                margin="none"
+                                sideOffset={8}
+                                collisionPadding={8}
+                            >
+                                <DropdownMenuLabel>Model for this session</DropdownMenuLabel>
+                                <DropdownMenuRadioGroup
+                                    value={settings?.modelId}
+                                    onValueChange={id => {
+                                        return void changeSettings("model", id);
+                                    }}
+                                >
+                                    {settings?.models.map(model => {
+                                        return <DropdownMenuRadioItem
+                                            key={model.id}
+                                            value={model.id}
+                                            disabled={busy || changingSettings || status !== "connected"}
+                                        >
+                                            <DropdownMenuItemContent>
+                                                {model.name}
+                                            </DropdownMenuItemContent>
+                                        </DropdownMenuRadioItem>;
+                                    })}
+                                </DropdownMenuRadioGroup>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        {!!settings?.efforts?.length && <DropdownMenu>
+                            <DropdownMenuTrigger
+                                asChild
+                            >
+                                <Button
+                                    aria-label="Reasoning effort"
+                                    className="agent-model-trigger"
+                                    variant="ghost"
+                                    size="small"
+                                    disabled={!service.selectEffort || busy || changingSettings || status !== "connected"}
+                                    title="Reasoning effort for this session"
+                                >
+                                    <span>
+                                        <span
+                                            className="agent-selection-label"
+                                        >
+                                            Effort
+                                        </span>
+                                        {" "}
+                                        {effortName}
+                                    </span>
+                                    <ChevronDown
+                                        size={12}
+                                        aria-hidden="true"
+                                    />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                aria-label="Reasoning effort"
+                                className="agent-selection-menu"
+                                side="top"
+                                align="end"
+                                margin="none"
+                                sideOffset={8}
+                                collisionPadding={8}
+                            >
+                                <DropdownMenuLabel>Reasoning effort</DropdownMenuLabel>
+                                <DropdownMenuRadioGroup
+                                    value={settings.effortId}
+                                    onValueChange={id => {
+                                        return void changeSettings("effort", id);
+                                    }}
+                                >
+                                    {settings.efforts.map(effort => {
+                                        return <DropdownMenuRadioItem
+                                            key={effort.id}
+                                            value={effort.id}
+                                            disabled={busy || changingSettings || status !== "connected"}
+                                        >
+                                            <DropdownMenuItemContent>
+                                                {effort.name}
+                                            </DropdownMenuItemContent>
+                                        </DropdownMenuRadioItem>;
+                                    })}
+                                </DropdownMenuRadioGroup>
+                            </DropdownMenuContent>
+                        </DropdownMenu>}
                     </div>
-                    <button
-                        aria-label="Voice input (coming soon)"
-                        className="agent-composer-tool"
-                        disabled
-                        title="Voice input is not available yet"
-                        type="button"
-                    >
-                        <Mic
-                            size={18}
-                            aria-hidden="true"
-                        />
-                    </button>
                     {busy ? (
                         <button
                             aria-label="Stop agent"

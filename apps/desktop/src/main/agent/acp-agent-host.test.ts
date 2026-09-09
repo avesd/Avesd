@@ -69,7 +69,19 @@ it("switches real ACP processes and models, rejects concurrent/invalid changes, 
         await expect(host.selectProvider("opencode")).rejects.toThrow("unavailable");
         await expect(host.selectProvider("forged")).rejects.toThrow("Unknown");
         await expect(host.selectModel("forged")).rejects.toThrow("unavailable");
+        expect((await host.getSettings()).models[0]?.name).toBe("Available · codex Fast");
+        expect((await host.getSettings()).effortId).toBe("medium");
+        await expect(host.selectEffort("forged")).rejects.toThrow("unavailable");
+        await host.selectEffort("high");
+        expect(await host.getSettings()).toMatchObject({
+            modelId: "fast",
+            effortId: "high",
+        });
         await host.selectModel("deep");
+        expect(await host.getSettings()).toMatchObject({
+            modelId: "deep",
+            effortId: "high",
+        });
         await expect(host.selectModel("reject")).rejects.toThrow();
         expect((await host.getSettings()).modelId).toBe("deep");
         const prompt = host.prompt("Synthetic prompt");

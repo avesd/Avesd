@@ -58,6 +58,7 @@ export const agentIpcChannels = Object.freeze({
     settings: "agent:settings",
     provider: "agent:provider",
     model: "agent:model",
+    effort: "agent:effort",
     cancel: "agent:cancel",
     connect: "agent:connect",
     configureWorkbench: "agent:configure-workbench",

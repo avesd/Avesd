@@ -2,7 +2,7 @@
  * @author Avesd
  * @package Configuration
  * @namespace Root
- * @description Configuration exports
+ * @description Create Vitest Config
  */
 
 import type { ViteUserConfig } from "vitest/config";

@@ -5,18 +5,11 @@
  * @description Vitest Config
  */
 
+import { createVitestConfig } from "@avesd/configuration/vitest";
 import { playwright } from "@vitest/browser-playwright";
-import { defineConfig } from "vitest/config";
 
-export default defineConfig({
+export default createVitestConfig({
     test: {
-        coverage: {
-            reporter: [
-                "text",
-                "html",
-            ],
-        },
-        passWithNoTests: false,
         projects: [
             {
                 test: {

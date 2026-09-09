@@ -59,13 +59,16 @@ Desktop code preserves process boundaries and groups related files by feature:
 apps/desktop/
   src/
     main/
-      index.ts              # Application composition and lifecycle
+      main.ts               # Process startup entry
+      desktop-application.ts # Application composition, IPC, and lifecycle
       agent/                # Agent transport, tools, permissions, MCP entry
       browser/              # Native web surfaces and browser bindings
       plugins/              # Local authoring, installation, sandboxed views
       storage/              # Config, workspace files, scoped storage, resources
       workspace/            # Workbench orchestration and widget service bridge
-    preload/                # Narrow privileged bridges
+    preload/
+      preload.ts            # Context bridge startup entry
+      desktop-api.ts        # Narrow privileged bridge implementation
     shared/
       browser/              # Browser IPC contracts
       plugins/              # Local plugin IPC contracts
@@ -83,10 +86,17 @@ apps/desktop/
     run.mjs                 # Explicit scenario selection
 ```
 
-Keep unit and component tests beside the code they cover. Add a feature folder
-when several related files need a home; avoid generic `utils` folders, barrel
-exports, or new packages solely to shorten paths. Build output entry names stay
-stable even when their source files move.
+Keep unit and component tests beside the code they cover and name them after
+the implementation they test. Tests import that implementation directly.
+Add a feature folder when several related files need a home; avoid generic
+`utils` folders, internal barrel files, or new packages solely to shorten paths.
+
+Package-level `src/index.ts` files define the public export surface and contain
+only re-exports. Put declarations, factories, and behavior in files named for
+their responsibilities. Configuration factories use explicit filenames such as
+`create-vitest-config.ts`; package export specifiers remain stable. Executable
+entry points use names such as `main.ts` and `preload.ts` and keep startup wiring
+small. Build outputs remain `out/main/index.js` and `out/preload/index.cjs`.
 
 ## Architecture overview
 

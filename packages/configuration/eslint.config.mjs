@@ -5,6 +5,6 @@
  * @description ESLint Config
  */
 
-import { createAvesdConfig } from "./eslint/index.mjs";
+import { createAvesdConfig } from "./eslint/create-avesd-config.mjs";
 
 export default createAvesdConfig(import.meta.dirname);

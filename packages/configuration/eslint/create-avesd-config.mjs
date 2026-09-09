@@ -2,7 +2,7 @@
  * @author Avesd
  * @package Configuration
  * @namespace Root
- * @description ESLint Config
+ * @description Create Avesd Config
  */
 
 import stylistic from "@stylistic/eslint-plugin";

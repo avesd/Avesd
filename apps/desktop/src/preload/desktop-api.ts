@@ -2,7 +2,7 @@
  * @author Avesd
  * @package Desktop
  * @namespace Root
- * @description Desktop exports
+ * @description Desktop API
  */
 
 import type { AgentProviderConfiguration, AgentProviderId, AgentProviderInstallation } from "../shared/agent/providers";
@@ -23,9 +23,9 @@ import type { AgentEvent, AgentSettings } from "@avesd/plugin-api";
 import type { WidgetInstanceId } from "@avesd/workspace-model";
 import type { JsonObject, WorkspaceSnapshot } from "@avesd/workspace-model";
 import type { WorkspaceNavigationCommand, WorkspaceNavigationState } from "@avesd/workspace-model";
-import { contextBridge, ipcRenderer } from "electron";
+import { ipcRenderer } from "electron";
 
-const desktopApi: DesktopApi = Object.freeze({
+export const desktopApi: DesktopApi = Object.freeze({
     agentProviders: Object.freeze({
         list: (refresh = false) => {
             return ipcRenderer.invoke(agentProvidersChannels.list, refresh) as Promise<readonly AgentProviderInstallation[]>;
@@ -134,6 +134,9 @@ const desktopApi: DesktopApi = Object.freeze({
         selectModel: (id: string) => {
             return ipcRenderer.invoke(agentIpcChannels.model, id) as Promise<void>;
         },
+        selectEffort: (id: string) => {
+            return ipcRenderer.invoke(agentIpcChannels.effort, id) as Promise<void>;
+        },
         cancel: () => {
             return ipcRenderer.invoke(agentIpcChannels.cancel) as Promise<void>;
         },
@@ -185,5 +188,3 @@ const desktopApi: DesktopApi = Object.freeze({
         },
     }),
 });
-
-contextBridge.exposeInMainWorld("avesd", desktopApi);

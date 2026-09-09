@@ -40,6 +40,9 @@ add subtree-specific constraints.
   `pnpm test`, `pnpm build`, and `pnpm validate`.
 - `README.md` currently owns product orientation and repository onboarding.
 - `working/` contains non-authoritative audits, plans, and temporary notes.
+- Package `src/index.ts` files contain re-exports only. Put types and behavior
+  in responsibility-named files; use explicit names for executable entry points
+  and configuration factories. Avoid internal barrels solely to shorten imports.
 
 ## Git handling
 
