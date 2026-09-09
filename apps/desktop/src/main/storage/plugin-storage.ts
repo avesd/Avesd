@@ -17,6 +17,7 @@ import { join } from "node:path";
 
 const sqliteProcesses = new Set<ChildProcess>();
 export function closePluginStorageProcesses(): void {
+
     for (const child of sqliteProcesses) {child.kill("SIGKILL");}
 }
 process.once("exit", closePluginStorageProcesses);
@@ -26,10 +27,12 @@ interface StorageIdentity {
     readonly pluginId: string;
 }
 const hash = (value: string) => {
+
     return createHash("sha256").update(value)
         .digest("hex");
 };
 const missing = (error: unknown) => {
+
     return !!error && typeof error === "object" && "code" in error && error.code === "ENOENT";
 };
 
@@ -39,9 +42,12 @@ export class PluginStorage {
     constructor(private readonly dataDirectory: string) {}
 
     invoke(identity: StorageIdentity, input: PluginStorageRequest, isActive: () => boolean): Promise<PluginStorageResult> {
+
         const request = parsePluginStorageRequest(input);
         const work = this.#queue.then(async () => {
+
             const active = () => {
+
                 if (!isActive()) {
                     throw new Error("Storage context is no longer active.");
                 }
@@ -59,6 +65,7 @@ export class PluginStorage {
                         "-shm",
                     ]) {await this.#checkFile(path + suffix);}
                     active();
+
                     return await this.#sqlite(path, request, isActive);
                 }
                 const parts = request.path.split("/").filter(Boolean);
@@ -71,10 +78,13 @@ export class PluginStorage {
                     if (entries.length > 1000) {
                         throw new Error("Directory entry limit exceeded.");
                     }
+
                     return entries.filter(entry => {
+
                         return !entry.name.startsWith(".avesd-") && (entry.isFile() || entry.isDirectory());
                     })
                         .map(entry => {
+
                             return {
                                 name: entry.name,
                                 kind: entry.isDirectory() ? "directory" as const : "file" as const,
@@ -85,7 +95,9 @@ export class PluginStorage {
                 await this.#checkFile(path);
                 active();
                 if (request.operation === "remove") {
-                    await unlink(path); return;
+                    await unlink(path);
+
+                    return;
                 }
                 if (request.operation === "write") {
                     const temporary = join(parent, `.avesd-${randomUUID()}`);
@@ -100,6 +112,7 @@ export class PluginStorage {
                         await unlink(temporary).catch(() => {
                         });
                     }
+
                     return;
                 }
                 const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);
@@ -121,6 +134,7 @@ export class PluginStorage {
                         throw new Error("File limit exceeded.");
                     }
                     active();
+
                     return new Uint8Array(buffer.subarray(0, count));
                 } finally { await file.close(); }
             } catch (error) {
@@ -136,12 +150,15 @@ export class PluginStorage {
             }
         });
         this.#queue = work.catch(() => {
+
             return undefined;
         });
+
         return work;
     }
 
     async #root(identity: StorageIdentity, kind: "files" | "sqlite"): Promise<string> {
+
         let root = await realpath(this.dataDirectory);
         for (const part of [
             "plugin-storage-v1",
@@ -149,12 +166,15 @@ export class PluginStorage {
             hash(identity.pluginId),
             kind,
         ]) {root = await this.#directory(root, part, true);}
+
         return root;
     }
     async #directory(parent: string, name: string, create: boolean): Promise<string> {
+
         const path = join(parent, name);
         if (create) {
             await mkdir(path, { mode: 0o700 }).catch(error => {
+
                 if (!(error && typeof error === "object" && "code" in error && error.code === "EEXIST")) {
                     throw error;
                 }
@@ -164,10 +184,13 @@ export class PluginStorage {
         if (!stat.isDirectory() || stat.isSymbolicLink()) {
             throw new Error("Unsafe storage directory.");
         }
+
         return path;
     }
     async #checkFile(path: string): Promise<void> {
+
         const stat = await lstat(path).catch(error => {
+
             if (!missing(error)) {
                 throw error;
             }
@@ -177,7 +200,9 @@ export class PluginStorage {
         }
     }
     #sqlite(path: string, request: PluginStorageRequest, isActive: () => boolean): Promise<PluginStorageResult> {
+
         return new Promise((resolve, reject) => {
+
             const worker = spawn(process.execPath, [
                 "--max-old-space-size=64",
                 "-e",
@@ -197,16 +222,19 @@ export class PluginStorage {
             });
             sqliteProcesses.add(worker);
             worker.once("close", () => {
+
                 return sqliteProcesses.delete(worker);
             });
             let settled = false;
             const finish = (ok: boolean, value?: PluginStorageResult) => {
+
                 if (settled) {
                     return;
                 }
                 settled = true;
                 clearTimeout(timeout); clearInterval(revocation);
                 worker.once("close", () => {
+
                     if (ok && isActive()) {
                         resolve(value);
                     }
@@ -217,9 +245,11 @@ export class PluginStorage {
                 worker.kill("SIGKILL");
             };
             const timeout = setTimeout(() => {
+
                 return void finish(false);
             }, 2000);
             const revocation = setInterval(() => {
+
                 if (!isActive()) {
                     finish(false);
                 }
@@ -228,12 +258,15 @@ export class PluginStorage {
                 ok: boolean;
                 value?: PluginStorageResult;
             }) => {
+
                 return void finish(message.ok, message.value);
             });
             worker.once("error", () => {
+
                 return void finish(false);
             });
             worker.once("exit", () => {
+
                 if (!settled) {
                     finish(false);
                 }
@@ -242,6 +275,7 @@ export class PluginStorage {
                 path,
                 request,
             }, error => {
+
                 if (error) {
                     finish(false);
                 }

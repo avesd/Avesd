@@ -20,23 +20,30 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 export function localWidgetPreferences(): WebPreferences {
+
     const isolatedSession = session.fromPartition(`avesd-local-widget-${randomUUID()}`);
     isolatedSession.setPermissionRequestHandler((_contents, _permission, callback) => {
+
         return void callback(false);
     });
     isolatedSession.setPermissionCheckHandler(() => {
+
         return false;
     });
     isolatedSession.setDevicePermissionHandler(() => {
+
         return false;
     });
     isolatedSession.on("will-download", (event) => {
+
         return void event.preventDefault();
     });
     isolatedSession.webRequest.onBeforeRequest((details, callback) =>
     {
+
         return void callback({ cancel: !details.url.startsWith("data:") && !details.url.startsWith("blob:") });
     });
+
     return {
         preload: join(__dirname, "../preload/local-widget.cjs"),
         session: isolatedSession,
@@ -54,20 +61,26 @@ export function localWidgetPreferences(): WebPreferences {
 }
 
 const literal = (input: unknown) => {
+
     return JSON.stringify(input).replaceAll("<", "\\u003c");
 };
 
 export async function loadLocalWidget(contents: WebContents, draft: LocalPluginDraft): Promise<void> {
+
     contents.setWindowOpenHandler(() => {
+
         return { action: "deny" };
     });
     contents.on("will-navigate", (event) => {
+
         return void event.preventDefault();
     });
     contents.on("will-frame-navigate", (event) => {
+
         return void event.preventDefault();
     });
     contents.on("will-redirect", (event) => {
+
         return void event.preventDefault();
     });
     const nonce = randomUUID().replaceAll("-", "");
@@ -98,6 +111,7 @@ export async function loadLocalWidget(contents: WebContents, draft: LocalPluginD
             return cleanup;
           }} : {})});
         }
+        if (${literal(!!draft.manifest.browser)}) context.browser = Object.freeze({...window.avesdWidget.browser});
         const controller = module.mount(root, Object.freeze(context));
         if (!controller || typeof controller.update !== 'function' || typeof controller.dispose !== 'function') {
           throw new Error('mount must return update and dispose methods.');
@@ -120,12 +134,15 @@ export async function loadLocalWidget(contents: WebContents, draft: LocalPluginD
 
 export async function bounded<T>(work: Promise<T>, milliseconds: number, timeout: () => void = () => {
 }): Promise<T> {
+
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
         return await Promise.race([
             work,
             new Promise<never>((_resolve, reject) => {
+
                 timer = setTimeout(() => {
+
                     timeout(); reject(new Error("Widget operation timed out."));
                 }, milliseconds);
             }),
@@ -139,6 +156,7 @@ export class LocalWidgetRunner {
     constructor(private readonly bridge: WidgetWorkspaceBridge) {}
 
     async preview(draft: LocalPluginDraft): Promise<string> {
+
         if (this.#preview && !this.#preview.isDestroyed()) {
             this.#preview.destroy();
         }
@@ -146,9 +164,11 @@ export class LocalWidgetRunner {
         this.#preview = window;
         try {
             await bounded(loadLocalWidget(window.webContents, draft), 5000, () => {
+
                 return void window.destroy();
             });
             window.show();
+
             return (await window.webContents.capturePage()).toPNG().toString("base64");
         } catch (error) {
             if (!window.isDestroyed()) {
@@ -162,6 +182,7 @@ export class LocalWidgetRunner {
         report: PluginTestReport;
         image?: string;
     }> {
+
         const window = this.#create(draft);
         const checks: {
             name: string;
@@ -170,6 +191,7 @@ export class LocalWidgetRunner {
         }[] = [];
         let image: string | undefined;
         const run = async () => {
+
             await loadLocalWidget(window.webContents, draft);
             checks.push({
                 name: "Module, mount, and initial update",
@@ -222,6 +244,7 @@ export class LocalWidgetRunner {
         };
         try {
             await bounded(run(), 10_000, () => {
+
                 return void window.destroy();
             });
         }
@@ -236,11 +259,13 @@ export class LocalWidgetRunner {
                 window.destroy();
             }
         }
+
         return {
             report: {
                 draftId: draft.id,
                 revision: draft.revision,
                 passed: checks.every((check) => {
+
                     return check.passed;
                 }),
                 checks,
@@ -250,6 +275,7 @@ export class LocalWidgetRunner {
     }
 
     #create(draft: LocalPluginDraft): BrowserWindow {
+
         const window = new BrowserWindow({
             show: false,
             width: draft.manifest.size.width * 40,
@@ -290,17 +316,22 @@ export class LocalWidgetRunner {
         let queue: Promise<unknown> = Promise.resolve();
         const storageDirectory = mkdtemp(join(tmpdir(), "avesd-preview-storage-"));
         const storage = storageDirectory.then(path => {
+
             return new PluginStorage(path);
         });
         const resources = storageDirectory.then(async path => {
+
             return new SharedResources(resourceDirectoryFile(join(path, "shared-resources-v1.json")), await storage, () => {
+
                 if (!window.isDestroyed()) {
                     window.webContents.send(widgetWorkspaceChannels.changed);
                 }
             });
         });
         window.once("closed", () => {
+
             void queue.finally(async () => {
+
                 await rm(await storageDirectory, {
                     recursive: true,
                     force: true,
@@ -316,7 +347,9 @@ export class LocalWidgetRunner {
                 capabilities: draft.manifest.capabilities ?? [],
             },
             invoke: (request, isActive) => {
+
                 const work = queue.then(async () => {
+
                     if (!isActive()) {
                         throw new Error("Preview is closed.");
                     }
@@ -324,6 +357,7 @@ export class LocalWidgetRunner {
                         if (request.operation === "publish" && !draft.manifest.capabilities?.includes(request.publication.kind === "file" ? "files" : "sqlite")) {
                             throw new Error("Publishing requires the private storage capability.");
                         }
+
                         return (await resources).invoke({
                             workspaceId,
                             pluginId: draft.manifest.id,
@@ -346,8 +380,10 @@ export class LocalWidgetRunner {
                     window.webContents.send(widgetWorkspaceChannels.changed);
                 });
                 queue = work.catch(() => {
+
                     return undefined;
                 });
+
                 return work;
             },
         });
@@ -355,16 +391,20 @@ export class LocalWidgetRunner {
         window.setMenu(null);
         this.#windows.add(window);
         window.on("closed", () => {
+
             this.#windows.delete(window);
         });
+
         return window;
     }
 
     async #evaluate(contents: WebContents, body: string): Promise<unknown> {
+
         return contents.executeJavaScriptInIsolatedWorld(1001, [{ code: `(() => { ${body} })()` }]);
     }
 
     async #step(contents: WebContents, step: WidgetTestStep): Promise<void> {
+
         const query = `const root = document.querySelector('#widget')?.shadowRoot;
       const matches = root?.querySelectorAll(${literal(step.selector)});
       if (matches?.length !== 1) throw new Error('Test selector must match exactly one element.');
@@ -385,6 +425,7 @@ export class LocalWidgetRunner {
                     throw new Error(`Text assertion failed for ${step.selector}.`);
                 }
                 await new Promise((resolve) => {
+
                     return setTimeout(resolve, 25);
                 });
             }
@@ -392,6 +433,7 @@ export class LocalWidgetRunner {
     }
 
     dispose(): void {
+
         for (const window of this.#windows) {
             if (!window.isDestroyed()) {
                 window.destroy();

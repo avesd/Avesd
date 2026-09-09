@@ -17,25 +17,35 @@ export class WebResults {
 
     constructor(private readonly api: WebSurfaceApi, private readonly repository: WorkspaceRepository) {}
 
-    attach(widgetId: string, id: string): void { this.#handles.set(widgetId, id); this.changed(); }
+    attach(widgetId: string, id: string): void {
+
+        this.#handles.set(widgetId, id); this.changed();
+    }
     detach(widgetId: string, id: string): void {
+
         if (this.#handles.get(widgetId) === id) {
             this.#handles.delete(widgetId);
         }
         this.changed();
     }
     changed(): void {
+
         this.#listeners.forEach((listener) => {
+
             return void listener();
         });
     }
 
     async list(scope: WorkspaceScope): Promise<readonly DataSource[]> {
+
         const snapshot = await this.repository.snapshot();
+
         return Promise.all(snapshot.widgets.filter((widget) => {
+
             return widget.workspaceId === scope.workspaceId
       && widget.pluginId === WEB_PLUGIN_ID && widget.widgetTypeId === "page";
         }).map(async (widget, index) => {
+
             let state: WebSurfaceState | undefined;
             const id = this.#handles.get(widget.id);
             if (id) {
@@ -46,6 +56,7 @@ export class WebResults {
                     });
                 } catch { /* Detached surface. */ }
             }
+
             return {
                 id: `web-result:${widget.id}` as DataSourceId,
                 name: `Web result ${index + 1} (temporary)`,
@@ -65,25 +76,34 @@ export class WebResults {
     }
 
     wrap(base: DataSourceService): DataSourceService {
+
         const isWeb = (id: DataSourceId) => {
+
             return id.startsWith("web-result:");
         };
+
         return {
             create: (scope, command) => {
+
                 return base.create(scope, command);
             },
             delete: (scope, id) => {
+
                 if (isWeb(id)) {
                     return Promise.reject(new Error("Remove the web widget to remove its output."));
                 }
+
                 return base.delete(scope, id);
             },
             list: async (scope: DashboardScope) => {
+
                 return [
                     ...await base.list(scope),
                     ...await this.list(scope)
                         .then((sources) => {
+
                             return sources.filter((source) => {
+
                                 return source.scope.kind === "dashboard"
           && source.scope.dashboardId === scope.dashboardId;
                             });
@@ -91,28 +111,36 @@ export class WebResults {
                 ];
             },
             read: async (scope, id) => {
+
                 if (!isWeb(id)) {
                     return base.read(scope, id);
                 }
                 const source = (await this.list(scope)).find((source) => {
+
                     return source.id === id;
                 });
                 if (!source || source.scope.kind !== "dashboard" || !("dashboardId" in scope) || source.scope.dashboardId !== scope.dashboardId) {
                     throw new Error("Web output is unavailable or incompatible with this dashboard.");
                 }
+
                 return source;
             },
             update: (scope, id, revision, value) => {
+
                 if (isWeb(id)) {
                     return Promise.reject(new Error("Web results are read-only."));
                 }
+
                 return base.update(scope, id, revision, value);
             },
             subscribe: (listener) => {
+
                 this.#listeners.add(listener);
                 const offBase = base.subscribe(listener);
                 const offWeb = this.api.subscribe(listener);
+
                 return () => {
+
                     this.#listeners.delete(listener); offBase(); offWeb();
                 };
             },

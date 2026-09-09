@@ -16,6 +16,7 @@ export class WorkspaceModelError extends Error {
         readonly code: WorkspaceModelErrorCode,
         message: string,
     ) {
+
         super(message);
         this.name = "WorkspaceModelError";
     }

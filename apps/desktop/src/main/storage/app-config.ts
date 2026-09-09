@@ -13,8 +13,10 @@ export interface AppConfig {
 }
 
 export function parseAppConfig(input: unknown): AppConfig {
+
     if (!input || typeof input !== "object" || Array.isArray(input)
     || Object.keys(input).some((key) => {
+
         return key !== "dataDirectory";
     })) {
         throw new Error("Avesd configuration must be an object with an optional dataDirectory field.");
@@ -26,11 +28,13 @@ export function parseAppConfig(input: unknown): AppConfig {
     if (typeof directory !== "string" || directory.includes("\0") || !isAbsolute(directory)) {
         throw new Error("Avesd dataDirectory must be an absolute directory path.");
     }
+
     return { dataDirectory: directory };
 }
 
 /** Application configuration has a stable home, independent of product data. */
 export async function loadAppConfig(homeDirectory: string): Promise<AppConfig> {
+
     let serialized: string;
     try {
         serialized = await readFile(join(homeDirectory, ".avesd", "config.json"), "utf8");
@@ -46,5 +50,6 @@ export async function loadAppConfig(homeDirectory: string): Promise<AppConfig> {
     } catch {
         throw new Error("Avesd configuration must contain valid JSON.");
     }
+
     return parseAppConfig(input);
 }

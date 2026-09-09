@@ -7,6 +7,8 @@
 
 import type { LocalWidgetCommand } from "../../shared/plugins/local-plugins";
 import { WIDGET_CONTENT_RADIUS } from "../../shared/widget-appearance";
+import type { AgentTaskBridge } from "../agent/agent-task-bridge";
+import type { PluginBrowserBridge } from "../browser/plugin-browser-bridge";
 import type { AgentWorkbench } from "../workspace/agent-workbench";
 import type { WidgetWorkspaceBridge } from "../workspace/widget-workspace-bridge";
 import type { LocalPluginStore } from "./local-plugin-store";
@@ -28,17 +30,21 @@ export class LocalWidgetSurfaces {
         private readonly window: BrowserWindow, private readonly store: LocalPluginStore,
         private readonly load: () => Promise<WorkspaceSnapshot | undefined>,
         private readonly bridge: WidgetWorkspaceBridge, private readonly workbench: AgentWorkbench,
+        private readonly browsers: PluginBrowserBridge,
+        private readonly agents: AgentTaskBridge,
     ) {}
 
     async command(command: LocalWidgetCommand): Promise<{
         id: string;
     }> {
+
         if (this.#closed) {
             throw new Error("Local widget surfaces are closed.");
         }
         if (command.type === "create") {
             const snapshot = await this.load();
             const widget = snapshot?.widgets.find((widget) => {
+
                 return widget.id === command.widgetId && sameDashboard(widget, snapshot.selection);
             });
             if (!widget) {
@@ -72,18 +78,28 @@ export class LocalWidgetSurfaces {
                     capabilities: draft.manifest.capabilities ?? [],
                 },
                 invoke: (request, isActive) => {
+
                     return this.workbench.invokeWidget(widget.id, request, isActive);
                 },
             });
+            const disposeBrowser = draft.manifest.browser
+                ? this.browsers.register(view.webContents, widget.id, widget.pluginId, draft.manifest.browser) : () => {
+                };
+            const disposeAgent = draft.manifest.capabilities?.includes("agent") ? this.agents.register(view.webContents, widget.id) : () => {
+            };
             this.#views.set(id, {
                 widgetId: widget.id,
                 view,
-                disposeServices,
+                disposeServices: () => {
+
+                    disposeAgent(); disposeBrowser(); disposeServices();
+                },
             });
             this.window.contentView.addChildView(view);
             view.setVisible(false);
             try {
                 await bounded(loadLocalWidget(view.webContents, draft), 5000, () => {
+
                     return void this.#destroy(id);
                 });
             }
@@ -91,10 +107,13 @@ export class LocalWidgetSurfaces {
             if (!this.#views.has(id)) {
                 throw new Error("Local widget was closed.");
             }
+
             return { id };
         }
         if (command.type === "destroy") {
-            this.#destroy(command.id); return { id: command.id };
+            this.#destroy(command.id);
+
+            return { id: command.id };
         }
         const item = this.#views.get(command.id);
         if (!item) {
@@ -112,10 +131,12 @@ export class LocalWidgetSurfaces {
                 height: Math.round(height),
             });
         }
+
         return { id: command.id };
     }
 
     #destroy(id: string): void {
+
         const item = this.#views.get(id);
         if (!item) {
             return;
@@ -127,9 +148,11 @@ export class LocalWidgetSurfaces {
         if (!contents.isDestroyed()) {
             void bounded(contents.executeJavaScript("window.__avesdWidget?.dispose()"), 250)
                 .catch(() => {
+
                     return undefined;
                 })
                 .finally(() => {
+
                     if (!contents.isDestroyed()) {
                         contents.close({ waitForBeforeUnload: false });
                     }
@@ -137,5 +160,8 @@ export class LocalWidgetSurfaces {
         }
     }
 
-    dispose(): void { this.#closed = true; for (const id of this.#views.keys()) {this.#destroy(id);} }
+    dispose(): void {
+
+        this.#closed = true; for (const id of this.#views.keys()) {this.#destroy(id);}
+    }
 }

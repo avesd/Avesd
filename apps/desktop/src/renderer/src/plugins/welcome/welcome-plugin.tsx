@@ -62,12 +62,16 @@ const welcomeWidget: WidgetContribution = {
     description: "A quiet starting point for your workspace.",
     displayName: "Welcome",
     mount(root) {
+
         const reactRoot = createRoot(root);
+
         return {
             dispose() {
+
                 reactRoot.unmount();
             },
             update() {
+
                 reactRoot.render(<>
                     <style>
                         {welcomeWidgetStyles}
@@ -113,7 +117,9 @@ const welcomeWidget: WidgetContribution = {
 
 export const welcomePlugin: PluginDefinition = {
     activate(context) {
+
         context.effect(() => {
+
             return context.contributions.contribute(
                 dashboardWidgetContribution,
                 welcomeWidget,

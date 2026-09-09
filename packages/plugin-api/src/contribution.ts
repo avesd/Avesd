@@ -14,6 +14,7 @@ export interface ContributionPoint<T> {
 
 export const defineContributionPoint = <T>(id: string): ContributionPoint<T> =>
 {
+
     return Object.freeze({ id });
 };
 

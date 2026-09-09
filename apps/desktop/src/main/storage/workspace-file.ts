@@ -15,12 +15,15 @@ export class WorkspaceFile {
     #saving = Promise.resolve();
 
     constructor(path: string) {
+
         this.#path = path;
     }
 
     async load(): Promise<WorkspaceSnapshot | undefined> {
+
         try {
             const input: unknown = JSON.parse(await readFile(this.#path, "utf8"));
+
             return parseWorkspaceSnapshot(input);
         } catch (error) {
             if (isNodeError(error) && error.code === "ENOENT") {
@@ -33,11 +36,13 @@ export class WorkspaceFile {
     save(input: unknown, expected?: {
         snapshot: WorkspaceSnapshot | undefined;
     }): Promise<void> {
+
         const snapshot = parseWorkspaceSnapshot(input);
         if (!snapshot) {
             throw new Error("Workspace snapshot is required");
         }
         const save = this.#saving.then(async () => {
+
             if (expected && JSON.stringify(await this.load()) !== JSON.stringify(expected.snapshot)) {
                 throw new Error("Workspace changed; refresh and retry the operation.");
             }
@@ -50,13 +55,16 @@ export class WorkspaceFile {
             await rename(temporaryPath, this.#path);
         });
         this.#saving = save.catch(() => {
+
             return undefined;
         });
+
         return save;
     }
 }
 
 const isNodeError = (error: unknown): error is NodeJS.ErrnoException =>
 {
+
     return error instanceof Error && "code" in error;
 };

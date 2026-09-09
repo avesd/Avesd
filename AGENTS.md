@@ -40,6 +40,10 @@ add subtree-specific constraints.
   `pnpm test`, `pnpm build`, and `pnpm validate`.
 - `README.md` currently owns product orientation and repository onboarding.
 - `working/` contains non-authoritative audits, plans, and temporary notes.
+- Tests live under each workspace's `test/`, never beside production source.
+  Unit tests mirror `src/` under `test/unit/`; integration tests use
+  `test/integration/`, and native Electron scenarios use `test/e2e/`.
+  Keep test sources covered by compile and lint when moving or adding suites.
 - Package `src/index.ts` files contain re-exports only. Put types and behavior
   in responsibility-named files; use explicit names for executable entry points
   and configuration factories. Avoid internal barrels solely to shorten imports.

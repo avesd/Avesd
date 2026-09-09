@@ -179,6 +179,7 @@ export const agentToolDefinitions = {
 export const agentToolNames = Object.keys(agentToolDefinitions);
 
 export function createAgentMcpServer(invoke: (name: string, input: unknown) => Promise<AgentToolResult>): McpServer {
+
     const server = new McpServer({
         name: "avesd-workspace",
         version: "0.2.0",
@@ -191,8 +192,10 @@ export function createAgentMcpServer(invoke: (name: string, input: unknown) => P
             description: definition.description,
             inputSchema: definition.schema,
         }, async (input: unknown) => {
+
             return { ...await invoke(name, input) };
         });
     }
+
     return server;
 }

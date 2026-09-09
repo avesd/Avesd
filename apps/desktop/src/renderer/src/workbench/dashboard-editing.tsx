@@ -16,10 +16,12 @@ const DashboardEditingContext = createContext<{
 export function DashboardEditingProvider({ children }: {
     readonly children: ReactNode;
 }) {
+
     const [
         isEditing,
         setIsEditing,
     ] = useState(false);
+
     return <DashboardEditingContext.Provider
         value={{
             isEditing,
@@ -31,9 +33,11 @@ export function DashboardEditingProvider({ children }: {
 }
 
 export function useDashboardEditing() {
+
     const state = useContext(DashboardEditingContext);
     if (!state) {
         throw new Error("Dashboard editing requires its workbench provider.");
     }
+
     return state;
 }

@@ -5,6 +5,7 @@
  * @description Web Plugin
  */
 
+import { parseBrowserSession } from "../../../../shared/browser/plugin-browser";
 import type { WebSurfaceApi, WebSurfaceState } from "../../../../shared/browser/web-surface";
 import { WEB_PLUGIN_ID, WEB_RESULT_TYPE } from "../../../../shared/browser/web-surface";
 import { WEB_VIEW_RADIUS } from "../../../../shared/widget-appearance";
@@ -12,6 +13,7 @@ import type { WebResults } from "../../workbench/web-results";
 import type { PluginDefinition } from "@avesd/plugin-api";
 import type { WidgetContribution } from "@avesd/plugin-ui";
 import { dashboardWidgetContribution } from "@avesd/plugin-ui";
+import type { JsonObject } from "@avesd/workspace-model";
 
 const styles = `
   :host { display:block; height:100%; color:#253026; font:12px system-ui; }
@@ -34,6 +36,7 @@ const styles = `
 `;
 
 export function createWebPlugin(api: WebSurfaceApi, results: WebResults): PluginDefinition {
+
     const page: WidgetContribution = {
         widgetTypeId: "page",
         displayName: "Web page",
@@ -62,21 +65,27 @@ export function createWebPlugin(api: WebSurfaceApi, results: WebResults): Plugin
             },
         },
         mount(root, context) {
+
             const style = document.createElement("style"); style.textContent = styles;
             const section = document.createElement("section");
             section.innerHTML = `<header><input aria-label="Website URL" placeholder="https://example.com" />
         <button type="button" class="go">Go</button><button type="button" class="reload">Reload</button>
-        <button type="button" class="toggle" aria-expanded="false">Tools</button></header>
-        <p class="status" role="status">Starting private session…</p>
+        <button type="button" class="toggle" aria-expanded="false">Tools</button>
+        <button type="button" class="background">Hide page</button><button type="button" class="login">Open login window</button></header>
+        <p class="status" role="status">Starting browser session…</p>
         <div class="viewport">Enter a URL to browse. Pages pause visually during layout editing or overlays.</div>
-        <div class="tools" hidden><p>Scripts can read and change this website using its current login. Run only code you trust.</p>
+        <div class="tools" hidden>
+          <label>Session name <input class="session-name" aria-label="Session name" value="default" maxlength="64" /></label>
+          <label><input type="checkbox" class="session-shared" /> Share this session within this workspace</label>
+          <button type="button" class="apply-session">Apply session</button>
+          <p>Sessions retain website login on this device. Shared sessions require approval. Applying a session reloads this page.</p><p>Scripts can read and change this website using its current login. Run only code you trust.</p>
           <label>Mode <select aria-label="Script mode"><option value="isolated">JavaScript · isolated world</option>
           <option value="page">JavaScript · page world</option><option value="css">CSS</option></select></label>
           <textarea aria-label="Script" spellcheck="false"></textarea>
           <label><input type="checkbox" class="consent" /> Allow this script on <strong class="origin">this page</strong></label>
           <div class="actions"><button type="button" class="run">Run</button>
           <button type="button" class="clear">Clear result</button></div>
-          <p>JSON results are shared only with bound widgets in this dashboard. Scripts, URLs and results are not saved; sessions clear on removal or restart. Reload resets page changes.</p>
+          <p>JSON results are shared only with bound widgets in this dashboard. Scripts, URLs and results are not saved; website login is retained locally. Reload resets page changes.</p>
         </div>`;
             root.append(style, section);
             const url = section.querySelector<HTMLInputElement>("input")!;
@@ -91,12 +100,18 @@ export function createWebPlugin(api: WebSurfaceApi, results: WebResults): Plugin
             const origin = section.querySelector<HTMLElement>(".origin")!;
             code.value = "({ title: document.title, heading: document.querySelector('h1')?.textContent ?? null })";
             let state: WebSurfaceState | undefined;
+            let configuration: JsonObject = {};
+            let background = false;
+            const backgroundButton = section.querySelector<HTMLButtonElement>(".background")!;
+            const sessionName = section.querySelector<HTMLInputElement>(".session-name")!;
+            const sessionShared = section.querySelector<HTMLInputElement>(".session-shared")!;
             let disposed = false;
             let frame = 0;
             let lastBounds = "";
             let running = false;
             let refreshVersion = 0;
             const show = (next: WebSurfaceState) => {
+
                 if (disposed) {
                     return;
                 }
@@ -104,11 +119,12 @@ export function createWebPlugin(api: WebSurfaceApi, results: WebResults): Plugin
                     consent.checked = false;
                 }
                 state = next;
-                status.textContent = `${next.status === "ready" ? "Ready" : next.status} · Private temporary session`;
+                status.textContent = `${next.status === "ready" ? "Ready" : next.status} · ${next.sharedSession ? "Shared" : "Private"} persistent session: ${next.sessionName ?? "default"}`;
                 origin.textContent = next.url && next.url !== "about:blank" ? new URL(next.url).origin : "this page";
                 run.disabled = running || next.status !== "ready" || !consent.checked;
             };
             const syncBounds = () => {
+
                 frame = 0;
                 if (!state || disposed) {
                     return;
@@ -117,8 +133,8 @@ export function createWebPlugin(api: WebSurfaceApi, results: WebResults): Plugin
                 const blocked = !!document.querySelector(".dashboard-shell.is-editing, .agent-panel");
                 const fits = rect.top >= 0 && rect.left >= 0 && rect.bottom <= window.innerHeight
           && rect.right <= window.innerWidth;
-                const visible = tools.hidden && !blocked && fits && state.status !== "empty";
-                viewport.textContent = blocked ? "Browser hidden while layout or agent controls are open."
+                const visible = !background && tools.hidden && !blocked && fits && state.status !== "empty";
+                viewport.textContent = background ? "Browser runs in the background. Show the page or open its login window to interact." : blocked ? "Browser hidden while layout or agent controls are open."
                     : !fits ? "Scroll this widget fully into view to use the browser." : "Enter a URL to browse.";
                 const bounds = {
                     x: rect.x,
@@ -137,15 +153,18 @@ export function createWebPlugin(api: WebSurfaceApi, results: WebResults): Plugin
                     id: state.id,
                     bounds,
                 }).catch(() => {
+
                     return undefined;
                 });
             };
             const scheduleBounds = () => {
+
                 if (!frame && !disposed) {
                     frame = requestAnimationFrame(syncBounds);
                 }
             };
             const refresh = async () => {
+
                 if (!state) {
                     return;
                 }
@@ -156,11 +175,12 @@ export function createWebPlugin(api: WebSurfaceApi, results: WebResults): Plugin
                         id: state.id,
                     });
                     if (version === refreshVersion) {
-                        show(next); scheduleBounds();
+                        show(next); lastBounds = ""; scheduleBounds();
                     }
                 } catch { /* The instance may have been removed. */ }
             };
             const navigate = async (target: string) => {
+
                 if (!state) {
                     return;
                 }
@@ -175,32 +195,97 @@ export function createWebPlugin(api: WebSurfaceApi, results: WebResults): Plugin
                 catch { status.textContent = "Use HTTPS, or HTTP on localhost, without URL credentials."; }
             };
             section.querySelector(".go")!.addEventListener("click", () => {
+
                 return void navigate(url.value);
             });
             url.addEventListener("keydown", (event) => {
+
                 if (event.key === "Enter") {
                     void navigate(url.value);
                 }
             });
             section.querySelector(".reload")!.addEventListener("click", () => {
+
                 return void navigate(state?.url || url.value);
             });
             toggle.addEventListener("click", () => {
+
                 tools.hidden = !tools.hidden; viewport.hidden = !tools.hidden;
                 toggle.setAttribute("aria-expanded", String(!tools.hidden)); scheduleBounds();
             });
+            backgroundButton.addEventListener("click", () => {
+
+                background = !background;
+                backgroundButton.textContent = background ? "Show page" : "Hide page";
+                scheduleBounds();
+            });
+            section.querySelector(".login")!.addEventListener("click", () => {
+
+                if (state) {
+                    void api.command({
+                        type: "show",
+                        id: state.id,
+                    }).catch(() => {
+
+                        status.textContent = "Login window unavailable.";
+                    });
+                }
+            });
+            section.querySelector<HTMLButtonElement>(".apply-session")!.addEventListener("click", () => {
+
+                void (async () => {
+
+                    const button = section.querySelector<HTMLButtonElement>(".apply-session")!;
+                    button.disabled = true;
+                    try {
+                        const browserSession = parseBrowserSession({
+                            name: sessionName.value,
+                            shared: sessionShared.checked,
+                        });
+                        await context.configuration.update({
+                            ...configuration,
+                            browserSession: { ...browserSession },
+                        });
+                        const target = state?.url;
+                        const next = await api.command({
+                            type: "create",
+                            widgetId: context.instanceId,
+                        });
+                        if (disposed) {
+                            await api.command({
+                                type: "destroy",
+                                id: next.id,
+                            });
+
+                            return;
+                        }
+                        if (state) {
+                            results.detach(context.instanceId, state.id);
+                        }
+                        show(next); results.attach(context.instanceId, next.id); lastBounds = "";
+                        if (target) {
+                            await navigate(target);
+                        }
+                        scheduleBounds();
+                    } catch (error) { status.textContent = error instanceof Error ? error.message : "Session could not be changed."; }
+                    finally { button.disabled = false; }
+                })();
+            });
             consent.addEventListener("change", () => {
+
                 if (state) {
                     show(state);
                 }
             });
             const revoke = () => {
+
                 consent.checked = false; if (state) {
                     show(state);
                 }
             };
             code.addEventListener("input", revoke); mode.addEventListener("change", revoke);
             run.addEventListener("click", () => {
+
                 if (!state || !consent.checked || running) {
                     return;
                 }
@@ -215,16 +300,20 @@ export function createWebPlugin(api: WebSurfaceApi, results: WebResults): Plugin
                     mode: mode.value as "isolated" | "page" | "css",
                 })
                     .then((next) => {
+
                         show(next); status.textContent = "Completed · temporary result available to bound widgets";
                     })
                     .catch(() => {
+
                         status.textContent = "Script failed or page changed. Return JSON; reload if the script is stuck.";
                     })
                     .finally(() => {
+
                         running = false; consent.checked = false; run.disabled = true;
                     });
             });
             section.querySelector(".clear")!.addEventListener("click", () => {
+
                 if (state) {
                     void api.command({
                         type: "clear",
@@ -243,30 +332,46 @@ export function createWebPlugin(api: WebSurfaceApi, results: WebResults): Plugin
             window.addEventListener("resize", scheduleBounds);
             window.addEventListener("scroll", scheduleBounds, true);
             const unsubscribe = api.subscribe(() => {
+
                 return void refresh();
             });
             void api.command({
                 type: "create",
                 widgetId: context.instanceId,
             }).then((next) => {
+
                 if (disposed) {
                     void api.command({
                         type: "destroy",
                         id: next.id,
                     }).catch(() => {
+
                         return undefined;
-                    }); return;
+                    });
+
+                    return;
                 }
                 show(next); results.attach(context.instanceId, next.id); scheduleBounds();
             })
                 .catch(() => {
+
                     if (!disposed) {
                         status.textContent = "Browser unavailable. Remove and re-add the widget to retry.";
                     }
                 });
+
             return {
-                update() { scheduleBounds(); },
+                update(next) {
+
+                    configuration = next.configuration;
+                    const stored = configuration.browserSession;
+                    if (stored) {
+                        try { const selected = parseBrowserSession(stored); sessionName.value = selected.name; sessionShared.checked = selected.shared; } catch { /* Host validates before opening. */ }
+                    }
+                    scheduleBounds();
+                },
                 dispose() {
+
                     disposed = true; cancelAnimationFrame(frame); resize.disconnect(); mutation.disconnect(); unsubscribe();
                     window.removeEventListener("resize", scheduleBounds);
                     window.removeEventListener("scroll", scheduleBounds, true);
@@ -276,6 +381,7 @@ export function createWebPlugin(api: WebSurfaceApi, results: WebResults): Plugin
                             type: "destroy",
                             id: state.id,
                         }).catch(() => {
+
                             return undefined;
                         });
                     }
@@ -323,12 +429,14 @@ export function createWebPlugin(api: WebSurfaceApi, results: WebResults): Plugin
             },
         },
         mount(root, context) {
+
             const style = document.createElement("style"); style.textContent = styles;
             const section = document.createElement("section");
             const header = document.createElement("header"); header.textContent = "Web result · temporary / local only";
             const output = document.createElement("pre"); section.append(header, output); root.append(style, section);
             let version = 0;
             const refresh = async () => {
+
                 const current = ++version;
                 try {
                     const [value] = await context.data.read("result");
@@ -344,11 +452,19 @@ export function createWebPlugin(api: WebSurfaceApi, results: WebResults): Plugin
                 }
             };
             const unsubscribe = context.data.subscribe("result", () => {
+
                 return void refresh();
             });
+
             return {
-                update() { void refresh(); },
-                dispose() { ++version; void unsubscribe(); root.replaceChildren(); },
+                update() {
+
+                    void refresh();
+                },
+                dispose() {
+
+                    ++version; void unsubscribe(); root.replaceChildren();
+                },
             };
         },
     };
@@ -380,6 +496,7 @@ export function createWebPlugin(api: WebSurfaceApi, results: WebResults): Plugin
             },
         },
         mount(root, context) {
+
             const style = document.createElement("style"); style.textContent = styles;
             const section = document.createElement("section");
             section.innerHTML = `<header><strong>Browser controls</strong></header>
@@ -399,23 +516,27 @@ export function createWebPlugin(api: WebSurfaceApi, results: WebResults): Plugin
             let disposed = false;
             let busy = false;
             const act = (action: "extract" | "navigate" | "click") => {
+
                 if (!context.browser || busy) {
                     return;
                 }
                 busy = true; status.textContent = "Working…";
                 section.querySelectorAll("button").forEach((button) => {
+
                     button.disabled = true;
                 });
                 const operation = action === "extract" ? context.browser.extract("browser", { text: selector.value })
                     : action === "navigate" ? context.browser.navigate("browser", destination.value)
                         : context.browser.click("browser", selector.value);
                 void operation.then((value) => {
+
                     if (disposed) {
                         return;
                     }
                     output.textContent = value ? JSON.stringify(value, null, 2) : "";
                     status.textContent = "Completed";
                 }).catch(() => {
+
                     if (disposed) {
                         return;
                     }
@@ -423,41 +544,55 @@ export function createWebPlugin(api: WebSurfaceApi, results: WebResults): Plugin
                     status.textContent = "Action denied or failed. Check the binding, allowed website, selector, and current page.";
                 })
                     .finally(() => {
+
                         busy = false;
                         if (!disposed) {
                             section.querySelectorAll("button").forEach((button) => {
+
                                 button.disabled = false;
                             });
                         }
                     });
             };
             section.querySelector(".read")!.addEventListener("click", () => {
+
                 return void act("extract");
             });
             section.querySelector(".navigate")!.addEventListener("click", () => {
+
                 return void act("navigate");
             });
             section.querySelector(".click")!.addEventListener("click", () => {
+
                 return void act("click");
             });
+
             return {
                 update() {},
-                dispose() { disposed = true; root.replaceChildren(); },
+                dispose() {
+
+                    disposed = true; root.replaceChildren();
+                },
             };
         },
     };
+
     return {
         id: WEB_PLUGIN_ID,
         apiVersion: 1,
         version: "0.1.0",
         activate(context) {
+
             context.effect(() => {
+
                 return context.contributions.contribute(dashboardWidgetContribution, page);
             });
             context.effect(() => {
+
                 return context.contributions.contribute(dashboardWidgetContribution, result);
             });
             context.effect(() => {
+
                 return context.contributions.contribute(dashboardWidgetContribution, controls);
             });
         },

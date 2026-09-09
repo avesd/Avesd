@@ -5,7 +5,7 @@
  * @description Widget Contribution
  */
 
-import type { Dispose } from "@avesd/plugin-api";
+import type { AgentTaskService, Dispose } from "@avesd/plugin-api";
 import { defineContributionPoint } from "@avesd/plugin-api";
 import type { DashboardId,
     JsonObject,
@@ -55,6 +55,7 @@ export interface WidgetBrowserService {
 
 export interface WidgetMountContext extends WidgetWorkspaceServices {
     readonly browser?: WidgetBrowserService;
+    readonly agent?: AgentTaskService;
     readonly configuration: WidgetConfigurationService;
     readonly dashboardId: DashboardId;
     readonly data: WidgetDataService;

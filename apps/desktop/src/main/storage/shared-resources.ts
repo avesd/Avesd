@@ -19,18 +19,22 @@ export interface ResourceDirectoryStorage {
     save(resources: readonly ResourceRecord[]): Promise<void>;
 }
 export function resourceDirectoryFile(path: string): ResourceDirectoryStorage {
+
     return {
         async load() {
+
             try { return JSON.parse(await readFile(path, "utf8")) as unknown; }
             catch (error) {
                 if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
                     return undefined;
                 }
+
                 // Deliberately omit private filesystem causes from IPC and host error logs.
                 return Promise.reject(new Error("Resource directory could not be loaded."));
             }
         },
         async save(resources) {
+
             await mkdir(dirname(path), {
                 recursive: true,
                 mode: 0o700,
@@ -53,18 +57,23 @@ export function resourceDirectoryFile(path: string): ResourceDirectoryStorage {
     };
 }
 const identifier = (input: unknown): string => {
+
     if (typeof input !== "string" || !input.trim() || input.length > 128) {
         throw new Error("Invalid resource directory identity.");
     }
+
     return input;
 };
 const grantAccess = (input: unknown): ResourceAccess => {
+
     if (input !== "read" && input !== "read-write") {
         throw new Error("Invalid resource grant.");
     }
+
     return input;
 };
 function parseRecords(input: unknown): readonly ResourceRecord[] {
+
     if (input === undefined) {
         return [];
     }
@@ -73,7 +82,9 @@ function parseRecords(input: unknown): readonly ResourceRecord[] {
     }
     const ids = new Set<string>();
     const keys = new Set<string>();
+
     return input.resources.map((value: unknown) => {
+
         if (!value || typeof value !== "object") {
             throw new Error("Invalid resource record.");
         }
@@ -93,6 +104,7 @@ function parseRecords(input: unknown): readonly ResourceRecord[] {
         ids.add(id); keys.add(key);
         const recipients = new Set<string>();
         const grants = item.grants.map((input: unknown) => {
+
             if (!input || typeof input !== "object" || !("pluginId" in input) || !("access" in input)) {
                 throw new Error("Invalid resource grant.");
             }
@@ -102,11 +114,13 @@ function parseRecords(input: unknown): readonly ResourceRecord[] {
                 throw new Error("Invalid resource grant.");
             }
             recipients.add(pluginId);
+
             return {
                 pluginId,
                 access,
             };
         });
+
         return {
             ...publication,
             id,
@@ -127,9 +141,13 @@ export class SharedResources {
     ) {}
 
     invoke(caller: ResourceIdentity, input: ResourceRequest, isActive: () => boolean): Promise<ResourceResult> {
+
         const request = parseResourceRequest(input);
+
         return this.#serial(async () => {
+
             const active = () => {
+
                 if (!isActive()) {
                     throw new Error("Resource context is no longer active.");
                 }
@@ -139,23 +157,28 @@ export class SharedResources {
             active();
             if (request.operation === "list") {
                 const query = request.query;
+
                 return records.filter(record => {
+
                     return record.workspaceId === caller.workspaceId
           && (!query.kind || record.kind === query.kind) && (!query.contractId || record.contract.id === query.contractId)
           && (!query.version || record.contract.version === query.version);
                 }).map(record => {
+
                     return describeResource(record, caller);
                 });
             }
             if (request.operation === "publish") {
                 const publication = request.publication;
                 const existing = records.find(record => {
+
                     return record.workspaceId === caller.workspaceId && record.publisherPluginId === caller.pluginId && record.key === publication.key;
                 });
                 if (existing) {
                     if (existing.path !== publication.path || existing.kind !== publication.kind || existing.name !== publication.name || JSON.stringify(existing.contract) !== JSON.stringify(publication.contract)) {
                         throw new Error("Publication is immutable; unpublish it before changing its source or contract.");
                     }
+
                     return describeResource(existing, caller);
                 }
                 await this.#verifySource(caller, publication.kind, publication.path, isActive);
@@ -174,9 +197,11 @@ export class SharedResources {
                     ...records,
                     published,
                 ]);
+
                 return describeResource(published, caller);
             }
             const resource = records.find(record => {
+
                 return record.id === request.resourceId && record.workspaceId === caller.workspaceId;
             });
             if (!resource) {
@@ -187,8 +212,10 @@ export class SharedResources {
                     throw new Error("Only the publisher can unpublish this resource.");
                 }
                 await this.#save(records.filter(record => {
+
                     return record !== resource;
                 }));
+
                 return;
             }
             const access = resourceAccess(resource, caller);
@@ -204,6 +231,7 @@ export class SharedResources {
                     throw new Error("Resource kind does not match.");
                 }
                 await this.#verifySource(publisher, resource.kind, resource.path, isActive);
+
                 return describeResource(resource, caller);
             }
             const operation = request.request;
@@ -213,6 +241,7 @@ export class SharedResources {
             if (access !== "read-write" && operation.operation !== "read" && operation.operation !== "query") {
                 throw new Error("Resource is read-only.");
             }
+
             return this.storage.invoke(publisher, {
                 ...operation,
                 path: resource.path,
@@ -224,11 +253,15 @@ export class SharedResources {
     listForHost(workspaceId: string): Promise<readonly (SharedResource & {
         readonly grants: ResourceRecord["grants"];
     })[]> {
+
         return this.#serial(async () => {
+
             return parseRecords(await this.directory.load()).filter(record => {
+
                 return record.workspaceId === workspaceId;
             })
                 .map(record => {
+
                     return {
                         ...describeResource(record, {
                             workspaceId,
@@ -240,15 +273,19 @@ export class SharedResources {
         });
     }
     grant(workspaceId: string, resourceId: string, pluginId: string, access: ResourceAccess | "none"): Promise<void> {
+
         identifier(workspaceId); identifier(resourceId); identifier(pluginId);
         // This persisted-data boundary validates values supplied outside TypeScript.
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (access !== "read" && access !== "read-write" && access !== "none") {
             return Promise.reject(new Error("Invalid resource access."));
         }
+
         return this.#serial(async () => {
+
             const records = parseRecords(await this.directory.load());
             const resource = records.find(record => {
+
                 return record.workspaceId === workspaceId && record.id === resourceId;
             });
             if (!resource || resource.publisherPluginId === pluginId) {
@@ -256,6 +293,7 @@ export class SharedResources {
             }
             const grants = [
                 ...resource.grants.filter(grant => {
+
                     return grant.pluginId !== pluginId;
                 }),
                 ...(access === "none" ? [] : [
@@ -269,6 +307,7 @@ export class SharedResources {
                 throw new Error("Resource grant limit reached.");
             }
             await this.#save(records.map(record => {
+
                 return record === resource ? {
                     ...record,
                     grants,
@@ -277,6 +316,7 @@ export class SharedResources {
         });
     }
     async #verifySource(caller: ResourceIdentity, kind: "file" | "sqlite", path: string, isActive: () => boolean): Promise<void> {
+
         await this.storage.invoke(caller, kind === "file" ? {
             type: "files",
             operation: "read",
@@ -290,13 +330,18 @@ export class SharedResources {
             }, isActive);
     }
     async #save(records: readonly ResourceRecord[]): Promise<void> {
+
         try { await this.directory.save(records); }
         catch { throw new Error("Resource directory could not be saved."); }
         this.changed();
     }
     #serial<T>(work: () => Promise<T>): Promise<T> {
+
         const pending = this.#queue.then(work); this.#queue = pending.catch(() => {
+
             return undefined;
-        }); return pending;
+        });
+
+        return pending;
     }
 }

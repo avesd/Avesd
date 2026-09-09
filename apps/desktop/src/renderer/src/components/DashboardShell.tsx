@@ -35,17 +35,23 @@ export const DashboardShell = ({
     scope,
     widgets,
 }: DashboardShellProps) => {
+
     const availableWidgets = useSyncExternalStore(
         (listener) => {
+
             const unsubscribe = widgets.subscribe(listener);
+
             return () => {
+
                 void unsubscribe();
             };
         },
         () => {
+
             return widgets.getAll(dashboardWidgetContribution.id);
         },
         () => {
+
             return EMPTY_WIDGETS;
         },
     );
@@ -60,15 +66,19 @@ export const DashboardShell = ({
     const { isEditing, setIsEditing } = useDashboardEditing();
 
     useEffect(() => {
+
         let active = true;
         const refresh = () => {
+
             void layouts.inspect(scope).then(
                 (nextSnapshot) => {
+
                     if (active) {
                         setSnapshot(nextSnapshot);
                     }
                 },
                 (cause: unknown) => {
+
                     if (active) {
                         setError(cause instanceof Error ? cause.message : "The dashboard could not be loaded.");
                     }
@@ -77,7 +87,9 @@ export const DashboardShell = ({
         };
         refresh();
         const unsubscribe = dataSources.subscribe(refresh);
+
         return () => {
+
             active = false;
             unsubscribe();
         };
@@ -88,10 +100,13 @@ export const DashboardShell = ({
     ]);
 
     useEffect(() => {
+
         const handleKeyDown = (event: KeyboardEvent) => {
+
             if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "e") {
                 event.preventDefault();
                 setIsEditing((current) => {
+
                     return !current;
                 });
             } else if (event.key === "Escape") {
@@ -99,12 +114,15 @@ export const DashboardShell = ({
             }
         };
         window.addEventListener("keydown", handleKeyDown);
+
         return () => {
+
             window.removeEventListener("keydown", handleKeyDown);
         };
     }, [setIsEditing]);
 
     const apply = async (operations: Parameters<DashboardLayoutService["apply"]>[1]["operations"]) => {
+
         if (!snapshot) {
             return;
         }
@@ -125,6 +143,7 @@ export const DashboardShell = ({
             className={`dashboard-shell${isEditing ? " is-editing" : ""}`}
             aria-label="Dashboard workspace"
             onContextMenu={(event) => {
+
                 event.preventDefault();
                 setIsEditing(true);
             }}
@@ -148,6 +167,7 @@ export const DashboardShell = ({
                     </div>
                 )}
                 {snapshot?.widgets.map((instance) => {
+
                     return (
                         <WidgetSurface
                             widgetServices={widgetServices}

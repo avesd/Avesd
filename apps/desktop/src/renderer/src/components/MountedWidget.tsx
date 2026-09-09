@@ -22,6 +22,7 @@ export const MountedWidget = ({
     readonly definition: WidgetContribution;
     readonly instance: WidgetInstance;
 }) => {
+
     const hostRef = useRef<HTMLDivElement>(null);
     const controllerRef = useRef<WidgetController | undefined>(undefined);
     const abortRef = useRef<AbortController | undefined>(undefined);
@@ -37,10 +38,12 @@ export const MountedWidget = ({
     const bindingsKey = JSON.stringify(bindings);
 
     useEffect(() => {
+
         applyRef.current = apply;
     }, [apply]);
 
     useEffect(() => {
+
         const host = hostRef.current;
         if (!host) {
             return;
@@ -50,6 +53,7 @@ export const MountedWidget = ({
         const abortController = new AbortController();
         abortRef.current = abortController;
         const showError = () => {
+
             root.replaceChildren();
             const message = document.createElement("p");
             message.className = "avesd-widget-error";
@@ -69,6 +73,7 @@ export const MountedWidget = ({
                         workspaceId,
                     },
                     (configuration) => {
+
                         return applyRef.current([
                             {
                                 configuration,
@@ -95,6 +100,7 @@ export const MountedWidget = ({
         }
 
         return () => {
+
             abortController.abort();
             try {
                 controllerRef.current?.dispose();
@@ -117,6 +123,7 @@ export const MountedWidget = ({
     ]);
 
     useEffect(() => {
+
         try {
             controllerRef.current?.update(toRenderState(instance));
         } catch {
@@ -149,6 +156,7 @@ export const MountedWidget = ({
 };
 
 const toRenderState = (instance: WidgetInstance): WidgetRenderState => {
+
     return {
         configuration: instance.configuration,
         size: instance.placement,

@@ -61,10 +61,12 @@ export class WorkspaceDataCoordinator implements DataSourceService {
         scope: DataSourceScope,
         command: CreateDataSourceCommand,
     ): Promise<DataSource> {
+
         const definition = this.resolveDefinition(command.pluginId, command.sourceTypeId);
         if (!definition) {
             throw new Error(`data source type is unavailable: ${command.pluginId}/${command.sourceTypeId}`);
         }
+
         return this.repository.createDataSource(scope, {
             configuration: command.configuration ?? definition.configuration,
             dataType: definition.dataType,
@@ -77,22 +79,28 @@ export class WorkspaceDataCoordinator implements DataSourceService {
     }
 
     delete(scope: WorkspaceScope, dataSourceId: DataSourceId): Promise<void> {
+
         return this.repository.deleteDataSource(scope, dataSourceId);
     }
 
     async list(scope: DashboardScope): Promise<readonly DataSource[]> {
+
         const sources = await this.repository.listDataSources(scope);
+
         return sources.filter((source) =>
         {
+
             return source.scope.kind === "workspace" || source.scope.dashboardId === scope.dashboardId;
         });
     }
 
     read(scope: WorkspaceScope, dataSourceId: DataSourceId): Promise<DataSource> {
+
         return this.repository.readDataSource(scope, dataSourceId);
     }
 
     subscribe(listener: WorkspaceRepositoryListener): () => void {
+
         return this.repository.subscribe(listener);
     }
 
@@ -102,6 +110,7 @@ export class WorkspaceDataCoordinator implements DataSourceService {
         expectedRevision: number,
         value: JsonValue,
     ): Promise<DataSource> {
+
         return this.repository.updateDataSource(scope, dataSourceId, expectedRevision, value);
     }
 }

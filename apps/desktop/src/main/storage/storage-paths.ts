@@ -20,7 +20,9 @@ export interface StoragePaths {
 }
 
 export function resolveStoragePaths(userDataDirectory: string, configuration: AppConfig): StoragePaths {
+
     const dataDirectory = normalize(configuration.dataDirectory ?? userDataDirectory);
+
     return {
         agentRuntime: join(dataDirectory, "agent-runtime"),
         dataDirectory,
@@ -31,6 +33,7 @@ export function resolveStoragePaths(userDataDirectory: string, configuration: Ap
 }
 
 export async function loadStoragePaths(userDataDirectory: string, homeDirectory: string): Promise<StoragePaths> {
+
     const configuration = await loadAppConfig(homeDirectory);
     const paths = resolveStoragePaths(userDataDirectory, configuration);
     try {
@@ -47,5 +50,6 @@ export async function loadStoragePaths(userDataDirectory: string, homeDirectory:
     } catch {
         throw new Error("The configured data directory could not be opened or created.");
     }
+
     return paths;
 }

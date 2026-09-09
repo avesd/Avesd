@@ -26,6 +26,8 @@ export interface WebSurfaceState {
     readonly url: string;
     readonly status: "empty" | "loading" | "ready" | "error";
     readonly result: JsonValue;
+    readonly sessionName?: string;
+    readonly sharedSession?: boolean;
 }
 
 export type WebSurfaceCommand =
@@ -34,7 +36,7 @@ export type WebSurfaceCommand =
       readonly widgetId: string;
   }
   | {
-      readonly type: "destroy" | "inspect" | "clear";
+      readonly type: "destroy" | "inspect" | "clear" | "show" | "hide";
       readonly id: string;
   }
   | {
@@ -73,6 +75,7 @@ export type WebSurfaceCommandResult =
 
 /** Keeps expected surface lifecycle failures from rejecting the Electron IPC handler itself. */
 export async function settleWebSurfaceCommand(command: Promise<WebSurfaceState>): Promise<WebSurfaceCommandResult> {
+
     try {
         return {
             ok: true,
@@ -87,13 +90,16 @@ export async function settleWebSurfaceCommand(command: Promise<WebSurfaceState>)
 }
 
 export function unwrapWebSurfaceCommand(result: WebSurfaceCommandResult): WebSurfaceState {
+
     if (!result.ok) {
         throw new Error(result.error);
     }
+
     return result.state;
 }
 
 export function parseWebUrl(value: string): URL {
+
     const url = new URL(value);
     if (url.username || url.password || (url.protocol !== "https:"
     && !(url.protocol === "http:" && [
@@ -103,19 +109,23 @@ export function parseWebUrl(value: string): URL {
     ].includes(url.hostname)))) {
         throw new Error("Use HTTPS, or HTTP on localhost, without URL credentials.");
     }
+
     return url;
 }
 
 export function parseWebCommand(input: unknown): WebSurfaceCommand {
+
     if (!input || typeof input !== "object") {
         throw new Error("Invalid web command.");
     }
     const value = input as Record<string, unknown>;
     const text = (key: string, limit = 4096): string => {
+
         const field = value[key];
         if (typeof field !== "string" || !field.length || field.length > limit) {
             throw new Error("Invalid web command field.");
         }
+
         return field;
     };
     if (value.type === "create") {
@@ -126,7 +136,7 @@ export function parseWebCommand(input: unknown): WebSurfaceCommand {
     }
     const id = text("id", 128);
     switch (value.type) {
-        case "destroy": case "inspect": case "clear": return {
+        case "destroy": case "inspect": case "clear": case "show": case "hide": return {
             type: value.type,
             id,
         };
@@ -144,6 +154,7 @@ export function parseWebCommand(input: unknown): WebSurfaceCommand {
         ].includes(String(value.mode))) {
                 throw new Error("Invalid script options.");
             }
+
             return {
                 type: "run",
                 id,
@@ -162,12 +173,14 @@ export function parseWebCommand(input: unknown): WebSurfaceCommand {
             "width",
             "height",
         ].every((key) => {
+
             return typeof bounds[key] === "number"
           && Number.isFinite(bounds[key]) && Math.abs(bounds[key]) <= 100_000;
         })
         || (bounds.width as number) < 0 || (bounds.height as number) < 0) {
                 throw new Error("Invalid bounds.");
             }
+
             return {
                 type: "bounds",
                 id,
@@ -179,8 +192,10 @@ export function parseWebCommand(input: unknown): WebSurfaceCommand {
 }
 
 export function parseWebResult(value: unknown): JsonValue {
+
     let nodes = 0;
     const visit = (item: unknown, depth: number): void => {
+
         if (++nodes > 10_000 || depth > 20) {
             throw new Error("Result is too large.");
         }
@@ -192,13 +207,19 @@ export function parseWebResult(value: unknown): JsonValue {
         }
         if (Array.isArray(item)) {
             item.forEach((child) => {
+
                 return void visit(child, depth + 1);
-            }); return;
+            });
+
+            return;
         }
         if (item && typeof item === "object" && Object.getPrototypeOf(item) === Object.prototype) {
             Object.values(item).forEach((child) => {
+
                 return void visit(child, depth + 1);
-            }); return;
+            });
+
+            return;
         }
         throw new Error("Return a JSON value, not DOM nodes or runtime objects.");
     };
@@ -206,5 +227,6 @@ export function parseWebResult(value: unknown): JsonValue {
     if (new TextEncoder().encode(JSON.stringify(value)).length > 65_536) {
         throw new Error("Result exceeds 64 KiB.");
     }
+
     return value as JsonValue;
 }

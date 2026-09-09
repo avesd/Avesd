@@ -20,6 +20,7 @@ import { Readable, Writable } from "node:stream";
 
 const errorMessage = (error: unknown): string =>
 {
+
     return error instanceof Error ? error.message : "Agent connection failed";
 };
 
@@ -84,17 +85,20 @@ const providerEnvironmentPrefixes = [
 ];
 
 export function createAgentProcessEnvironment(parent: NodeJS.ProcessEnv, overrides: Record<string, string> = {}): NodeJS.ProcessEnv {
+
     const environment: NodeJS.ProcessEnv = {};
     for (const [
         key,
         value,
     ] of Object.entries(parent)) {
         if (value !== undefined && (inheritedEnvironmentKeys.has(key) || providerEnvironmentPrefixes.some(prefix => {
+
             return key.startsWith(prefix);
         }))) {
             environment[key] = value;
         }
     }
+
     return {
         ...environment,
         ELECTRON_RUN_AS_NODE: "1",
@@ -103,6 +107,7 @@ export function createAgentProcessEnvironment(parent: NodeJS.ProcessEnv, overrid
 }
 
 export function withAvesdContext(text: string, context: AvesdAgentContext): string {
+
     return [
         "Avesd host context:",
         "- You are the workspace agent embedded in Avesd, a local-first desktop workspace.",
@@ -140,9 +145,12 @@ export class AcpAgentHost {
         private readonly preferences: AgentPreferences, private readonly providers: readonly AgentProvider[],
         private readonly context: () => Promise<AvesdAgentContext>,
     ) {
+
         this.#provider = providers.find(provider => {
+
             return provider.id === preferences.providerId && provider.availability?.().available !== false;
         }) ?? providers.find(provider => {
+
             return provider.availability?.().available !== false;
         }) ?? providers[0]!;
         this.#runtimeRoot = runtimeRoot;
@@ -150,13 +158,18 @@ export class AcpAgentHost {
         this.#mcpServerPath = mcpServerPath;
     }
 
-    async getSettings(): Promise<AgentSettings> { return this.#settings(); }
+    async getSettings(): Promise<AgentSettings> {
+
+        return this.#settings();
+    }
 
     #settings(): AgentSettings {
+
         return {
             status: this.#status,
             providerId: this.#provider.id,
             providers: this.providers.map(({ id, name, availability }) => {
+
                 return {
                     id,
                     name,
@@ -172,6 +185,7 @@ export class AcpAgentHost {
     }
 
     publishSettings(): void {
+
         this.#emit({
             type: "settings",
             settings: this.#settings(),
@@ -179,6 +193,7 @@ export class AcpAgentHost {
     }
 
     async configureProvider(id: string, save: () => Promise<void>): Promise<void> {
+
         this.#checkIdle();
         this.#changing = true;
         try {
@@ -200,14 +215,17 @@ export class AcpAgentHost {
     }
 
     #checkIdle(): void {
+
         if (this.#disposed || this.#isPrompting || this.#connecting || this.#changing) {
             throw new Error("Wait for the current agent operation to finish.");
         }
     }
 
     async selectProvider(id: string): Promise<void> {
+
         this.#checkIdle();
         const provider = this.providers.find(item => {
+
             return item.id === id;
         });
         if (!provider) {
@@ -242,6 +260,7 @@ export class AcpAgentHost {
     }
 
     async selectModel(id: string): Promise<void> {
+
         this.#checkIdle();
         const session = this.#session;
         if (!session || typeof id !== "string" || id.length > 512) {
@@ -268,10 +287,12 @@ export class AcpAgentHost {
     }
 
     async cancel(): Promise<void> {
+
         await this.#session?.cancel();
     }
 
     async selectEffort(id: string): Promise<void> {
+
         this.#checkIdle();
         const session = this.#session;
         if (!session || typeof id !== "string" || id.length > 512) {
@@ -288,6 +309,7 @@ export class AcpAgentHost {
     }
 
     connect(): Promise<void> {
+
         if (this.#disposed) {
             return Promise.reject(new Error("This agent session has ended."));
         }
@@ -306,6 +328,7 @@ export class AcpAgentHost {
             type: "status",
         });
         const connecting = this.#start().catch(error => {
+
             this.#emit({
                 type: "status",
                 status: "error",
@@ -314,15 +337,18 @@ export class AcpAgentHost {
             throw error;
         })
             .finally(() => {
+
                 if (this.#connecting === connecting) {
                     this.#connecting = undefined;
                 }
             });
         this.#connecting = connecting;
+
         return connecting;
     }
 
     dispose(): void {
+
         this.#disposed = true;
         this.#session?.close();
         this.#session = undefined;
@@ -331,6 +357,7 @@ export class AcpAgentHost {
     }
 
     async prompt(text: string): Promise<void> {
+
         await this.connect();
         if (!this.#session) {
             throw new Error("Agent is not connected");
@@ -361,6 +388,7 @@ export class AcpAgentHost {
     }
 
     subscribe(listener: (event: AgentEvent) => void): Dispose {
+
         this.#listeners.add(listener);
         listener({
             type: "status",
@@ -370,12 +398,15 @@ export class AcpAgentHost {
             type: "settings",
             settings: this.#settings(),
         });
+
         return () => {
+
             this.#listeners.delete(listener);
         };
     }
 
     #emit(event: AgentEvent): void {
+
         if (event.type === "status") {
             this.#status = event.status;
         }
@@ -385,6 +416,7 @@ export class AcpAgentHost {
     }
 
     #handleRuntimeEvent(event: AcpRuntimeEvent): void {
+
         if (event.type === "modelsChanged") {
             this.#emit({
                 type: "settings",
@@ -397,6 +429,7 @@ export class AcpAgentHost {
     }
 
     async #start(): Promise<void> {
+
         if (!this.#gateway) {
             throw new Error("The local Avesd tool gateway is unavailable. Restart the application to retry.");
         }
@@ -424,6 +457,7 @@ export class AcpAgentHost {
         this.#child = child;
         child.stderr.resume();
         child.once("error", () => {
+
             if (this.#child === child) {
                 this.#emit({
                     type: "status",
@@ -433,6 +467,7 @@ export class AcpAgentHost {
             }
         });
         child.once("exit", (code) => {
+
             if (this.#child !== child) {
                 return;
             }
@@ -479,6 +514,7 @@ export class AcpAgentHost {
                     },
                 ],
                 onEvent: (event) => {
+
                     if (this.#child === child && !this.#disposed) {
                         this.#handleRuntimeEvent(event);
                     }
@@ -496,6 +532,7 @@ export class AcpAgentHost {
             this.#session = session;
             const preferred = this.preferences.models[this.#provider.id];
             if (preferred && session.models.choices.some(model => {
+
                 return model.id === preferred;
             }) && session.models.id !== preferred) {
                 await session.selectModel(preferred);
@@ -527,6 +564,7 @@ export class AcpAgentHost {
     }
 
     #stopChild(): void {
+
         const child = this.#child;
         this.#child = undefined;
         const cwd = this.#cwd;
@@ -534,10 +572,12 @@ export class AcpAgentHost {
         if (child && !child.killed) {
             if (cwd) {
                 child.once("exit", () => {
+
                     void rm(cwd, {
                         recursive: true,
                         force: true,
                     }).catch(() => {
+
                         return undefined;
                     });
                 });
@@ -548,12 +588,14 @@ export class AcpAgentHost {
                 recursive: true,
                 force: true,
             }).catch(() => {
+
                 return undefined;
             });
         }
     }
 
     #cleanupCwd(cwd: string): void {
+
         if (this.#cwd === cwd) {
             this.#cwd = undefined;
         }
@@ -561,6 +603,7 @@ export class AcpAgentHost {
             recursive: true,
             force: true,
         }).catch(() => {
+
             return undefined;
         });
     }

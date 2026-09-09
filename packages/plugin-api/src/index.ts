@@ -6,6 +6,7 @@
  */
 
 export type * from "./agent-service";
+export type * from "./agent-task";
 export * from "./contribution";
 export type * from "./dispose";
 export type * from "./json";

@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 export function AgentMarkdown({ text }: {
     readonly text: string;
 }) {
+
     return <div
         className="agent-markdown"
     >
@@ -11,10 +12,12 @@ export function AgentMarkdown({ text }: {
             skipHtml
             remarkPlugins={[remarkGfm]}
             urlTransform={url => {
+
                 return /^https?:\/\//i.test(url) ? url : "";
             }}
             components={{
                 a: ({ href, children }) => {
+
                     return href ? <a
                         href={href}
                         target="_blank"
@@ -26,6 +29,7 @@ export function AgentMarkdown({ text }: {
                     </span>;
                 },
                 img: ({ alt }) => {
+
                     return <span
                         className="agent-image-label"
                     >

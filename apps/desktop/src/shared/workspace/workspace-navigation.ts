@@ -13,14 +13,17 @@ export interface WorkspaceNavigationApi {
 }
 
 export function parseWorkspaceNavigation(input: unknown): WorkspaceNavigationCommand {
+
     if (!input || typeof input !== "object") {
         throw new Error("Invalid workspace navigation command.");
     }
     const command = input as Record<string, unknown>;
     const text = (value: unknown): string => {
+
         if (typeof value !== "string" || !value.trim() || value.length > 128) {
             throw new Error("Invalid workspace navigation field.");
         }
+
         return value;
     };
     if (command.type === "inspect") {

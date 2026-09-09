@@ -80,14 +80,22 @@ apps/desktop/
       components/           # Dashboard shell and widget hosting
       workbench/            # Renderer orchestration
       plugins/              # One directory per built-in plugin/adapter
-  tests/electron/
-    support/                # Shared isolated desktop lifecycle and helpers
-    *.test.mjs              # Independently runnable native scenarios
-    run.mjs                 # Explicit scenario selection
+  test/
+    unit/                   # Mirrors src/, including renderer browser tests
+    integration/            # Real listeners, processes, and multi-owner storage
+    e2e/
+      support/              # Shared isolated desktop lifecycle and helpers
+      *.test.mjs            # Independently runnable native scenarios
+      run.mjs               # Explicit scenario selection
 ```
 
-Keep unit and component tests beside the code they cover and name them after
-the implementation they test. Tests import that implementation directly.
+Keep tests in each workspace's `test/` directory, not beside production code.
+Unit and component tests mirror `src/` under `test/unit/` and import the covered
+implementation directly. Integration tests mirror the owning source path under
+`test/integration/`; native Electron scenarios live under `test/e2e/`.
+Configuration rule tests mirror `eslint/` under `test/unit/eslint/`.
+Path correspondence does not require a test for every source file. TypeScript
+tests remain included in compile and type-aware lint checks.
 Add a feature folder when several related files need a home; avoid generic
 `utils` folders, internal barrel files, or new packages solely to shorten paths.
 
@@ -97,6 +105,13 @@ their responsibilities. Configuration factories use explicit filenames such as
 `create-vitest-config.ts`; package export specifiers remain stable. Executable
 entry points use names such as `main.ts` and `preload.ts` and keep startup wiring
 small. Build outputs remain `out/main/index.js` and `out/preload/index.cjs`.
+
+Shared ESLint rules apply to workspace source, configuration, tests, and root
+scripts. `pnpm lint` checks `scripts/` and the root ESLint configuration before
+running workspace checks. Nonempty function and enum bodies start with one blank
+line after `{`; a `return` preceded by another statement in its block also has a
+blank line before it. Empty bodies do not need padding. These conventions are
+autofixable, including the requirement to use braces around conditional bodies.
 
 ## Architecture overview
 
@@ -127,5 +142,6 @@ See [Runtime architecture](docs/runtime-architecture.md) for the complete model.
   directory configuration and migration.
 - [Local widgets](docs/local-widgets.md) — Agent-authored widgets, private
   storage, shared resources, testing, and activation.
+- [Agent sessions](docs/agent-sessions.md) — tier routing, widget tasks, and unified session management.
 - [Browser widgets](docs/browser-widgets.md) — embedded pages, script tools, and
   browser control bindings.

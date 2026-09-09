@@ -127,6 +127,7 @@ export class DashboardLayoutError extends Error {
         readonly code: DashboardLayoutErrorCode,
         message: string,
     ) {
+
         super(message);
         this.name = "DashboardLayoutError";
     }
@@ -141,14 +142,17 @@ export class DashboardLayoutCoordinator implements DashboardLayoutService {
         resolveWidget: WidgetDefinitionResolver,
         private readonly readBindingSource: WorkspaceRepository["readDataSource"] =
             (scope, id) => {
+
                 return repository.readDataSource(scope, id);
             },
     ) {
+
         this.#repository = repository;
         this.#resolveWidget = resolveWidget;
     }
 
     inspect(scope: DashboardScope): Promise<DashboardLayoutSnapshot> {
+
         return this.#repository.readDashboardLayout(scope);
     }
 
@@ -156,6 +160,7 @@ export class DashboardLayoutCoordinator implements DashboardLayoutService {
         scope: DashboardScope,
         command: ApplyDashboardLayout,
     ): Promise<DashboardLayoutSnapshot> {
+
         const current = await this.inspect(scope);
         if (command.operations.length === 0) {
             return current;
@@ -166,6 +171,7 @@ export class DashboardLayoutCoordinator implements DashboardLayoutService {
             switch (operation.type) {
                 case "add": {
                     if (widgets.some(({ id }) => {
+
                         return id === operation.id;
                     })) {
                         throw new DashboardLayoutError(
@@ -183,6 +189,7 @@ export class DashboardLayoutCoordinator implements DashboardLayoutService {
                     assertWidgetDefinition(definition);
                     const placement = operation.placement ?? findAvailablePlacement(
                         widgets.map(({ placement: occupied }) => {
+
                             return occupied;
                         }),
                         definition.defaultSize,
@@ -216,6 +223,7 @@ export class DashboardLayoutCoordinator implements DashboardLayoutService {
                         );
                     }
                     const input = definition.inputs.find(({ id }) => {
+
                         return id === operation.inputId;
                     });
                     if (!input) {
@@ -231,6 +239,7 @@ export class DashboardLayoutCoordinator implements DashboardLayoutService {
                         );
                     }
                     const sources = await Promise.all(operation.dataSourceIds.map((dataSourceId) => {
+
                         return this.readBindingSource(scope, dataSourceId);
                     }));
                     for (const source of sources) {
@@ -321,6 +330,7 @@ export class DashboardLayoutCoordinator implements DashboardLayoutService {
         }
 
         assertDashboardLayout(widgets);
+
         return this.#repository.writeDashboardLayout(
             scope,
             command.expectedRevision,
@@ -333,8 +343,10 @@ export const isSupportedWidgetSize = (
     policy: WidgetSizePolicy,
     size: WidgetSize,
 ): boolean => {
+
     if (policy.kind === "fixed") {
         return policy.sizes.some(({ height, width }) => {
+
             return height === size.height && width === size.width;
         });
     }
@@ -343,6 +355,7 @@ export const isSupportedWidgetSize = (
         height: 1,
         width: 1,
     };
+
     return size.width >= policy.minimum.width
     && size.width <= policy.maximum.width
     && size.height >= policy.minimum.height
@@ -355,6 +368,7 @@ export const findAvailablePlacement = (
     occupied: readonly GridPlacement[],
     size: WidgetSize,
 ): GridPlacement => {
+
     assertPlacement({
         ...size,
         x: 0,
@@ -368,6 +382,7 @@ export const findAvailablePlacement = (
                 y,
             };
             if (occupied.every((other) => {
+
                 return !overlaps(placement, other);
             })) {
                 return placement;
@@ -377,6 +392,7 @@ export const findAvailablePlacement = (
 };
 
 const assertWidgetDefinition = (definition: WidgetDefinition): void => {
+
     if (!Number.isInteger(definition.configurationVersion) || definition.configurationVersion < 1) {
         throw new DashboardLayoutError(
             "invalid-widget-definition",
@@ -409,6 +425,7 @@ const assertSupportedSize = (
     definition: WidgetDefinition,
     size: WidgetSize,
 ): void => {
+
     if (!isSupportedWidgetSize(definition.sizePolicy, size)) {
         throw new DashboardLayoutError(
             "unsupported-size",
@@ -418,6 +435,7 @@ const assertSupportedSize = (
 };
 
 export const assertDashboardLayout = (widgets: readonly WidgetInstance[]): void => {
+
     for (const widget of widgets) {
         assertPlacement(widget.placement);
     }
@@ -439,6 +457,7 @@ export const assertDashboardLayout = (widgets: readonly WidgetInstance[]): void 
 };
 
 const assertPlacement = (placement: GridPlacement): void => {
+
     const values = [
         placement.x,
         placement.y,
@@ -447,6 +466,7 @@ const assertPlacement = (placement: GridPlacement): void => {
     ];
     if (
         values.some((value) => {
+
             return !Number.isInteger(value);
         })
     || placement.x < 0
@@ -466,17 +486,21 @@ const requireWidgetIndex = (
     widgets: readonly WidgetInstance[],
     id: WidgetInstanceId,
 ): number => {
+
     const index = widgets.findIndex((widget) => {
+
         return widget.id === id;
     });
     if (index < 0) {
         throw new DashboardLayoutError("widget-not-found", `widget instance not found: ${id}`);
     }
+
     return index;
 };
 
 const overlaps = (first: GridPlacement, second: GridPlacement): boolean =>
 {
+
     return first.x < second.x + second.width
   && first.x + first.width > second.x
   && first.y < second.y + second.height

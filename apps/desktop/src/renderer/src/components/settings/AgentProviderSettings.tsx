@@ -20,6 +20,7 @@ const labels = {
 export function AgentProviderSettings({ api }: {
     readonly api: AgentProvidersApi;
 }) {
+
     const [
         providers,
         setProviders,
@@ -34,27 +35,34 @@ export function AgentProviderSettings({ api }: {
     ] = useState<string>();
     const active = useRef(true);
     useEffect(() => {
+
         active.current = true;
         void api.list(true).then(value => {
+
             if (active.current) {
                 setProviders(value);
             }
         })
             .catch(() => {
+
                 if (active.current) {
                     setError("Agent installations could not be checked. Try refreshing.");
                 }
             })
             .finally(() => {
+
                 if (active.current) {
                     setBusy(false);
                 }
             });
+
         return () => {
+
             active.current = false;
         };
     }, [api]);
     const run = async (operation: () => Promise<void>) => {
+
         setBusy(true); setError(undefined);
         try {
             await operation(); const result = await api.list(); if (active.current) {
@@ -72,6 +80,7 @@ export function AgentProviderSettings({ api }: {
             }
         }
     };
+
     return <section
         className="agent-installations"
         aria-label="Agent installations"
@@ -88,7 +97,9 @@ export function AgentProviderSettings({ api }: {
                     size={13}
                 />}
                 onClick={() => {
+
                     return void run(async () => {
+
                         await api.list(true);
                     });
                 }}
@@ -114,17 +125,22 @@ export function AgentProviderSettings({ api }: {
             Changing the active agent’s path or enabled setting ends its current conversation.
         </p>
         {providers.map(provider => {
+
             return <ProviderCard
                 key={provider.id}
                 provider={provider}
                 disabled={busy}
                 configure={configuration => {
+
                     return run(() => {
+
                         return api.configure(provider.id, configuration);
                     });
                 }}
                 openSetup={() => {
+
                     return run(() => {
+
                         return api.openSetup(provider.id);
                     });
                 }}
@@ -144,6 +160,7 @@ function ProviderCard({ provider, disabled, configure, openSetup }: {
     readonly configure: (configuration: AgentProviderConfiguration) => Promise<void>;
     readonly openSetup: () => Promise<void>;
 }) {
+
     const [
         draft,
         setDraft,
@@ -152,6 +169,7 @@ function ProviderCard({ provider, disabled, configure, openSetup }: {
         value: provider.executablePath,
     });
     const path = draft.source === provider.executablePath ? draft.value : provider.executablePath;
+
     return <article
         className="provider-card"
         aria-label={`${provider.name} installation`}
@@ -171,6 +189,7 @@ function ProviderCard({ provider, disabled, configure, openSetup }: {
                     checked={provider.enabled}
                     disabled={disabled}
                     onChange={event => {
+
                         return void configure({
                             enabled: event.target.checked,
                             executablePath: provider.executablePath,
@@ -208,6 +227,7 @@ function ProviderCard({ provider, disabled, configure, openSetup }: {
             <summary>Executable path</summary>
             <form
                 onSubmit={event => {
+
                     event.preventDefault(); void configure({
                         enabled: provider.enabled,
                         executablePath: path,
@@ -224,6 +244,7 @@ function ProviderCard({ provider, disabled, configure, openSetup }: {
                         autoComplete="off"
                         spellCheck={false}
                         onChange={event => {
+
                             return void setDraft({
                                 source: provider.executablePath,
                                 value: event.target.value,
@@ -255,6 +276,7 @@ function ProviderCard({ provider, disabled, configure, openSetup }: {
                     size={12}
                 />}
                 onClick={() => {
+
                     return void openSetup();
                 }}
             >

@@ -10,7 +10,7 @@ import type { PluginResourceService } from "./shared-resources";
 import type { Dashboard, DashboardScope, Workspace, WorkspaceId, WorkspaceSnapshot } from "./workspace-model";
 import type { WorkspaceNavigationCommand } from "./workspace-navigation";
 
-export type WidgetWorkspaceCapability = "catalog" | "navigation" | "management" | "files" | "sqlite" | "resources";
+export type WidgetWorkspaceCapability = "catalog" | "navigation" | "management" | "files" | "sqlite" | "resources" | "agent";
 
 export type DashboardSummary = Pick<Dashboard, "id" | "name" | "workspaceId">;
 export type WorkspaceCatalogQuery =
@@ -28,8 +28,10 @@ export type WorkspaceCatalogResult = readonly Workspace[] | readonly DashboardSu
 
 /** Project system metadata, never layouts, widget configuration, or source values. */
 export function readWorkspaceCatalog(snapshot: WorkspaceSnapshot, query: WorkspaceCatalogQuery): WorkspaceCatalogResult {
+
     switch (query.type) {
         case "workspaces": return snapshot.workspaces.map(({ id, name }) => {
+
             return {
                 id,
                 name,
@@ -37,14 +39,18 @@ export function readWorkspaceCatalog(snapshot: WorkspaceSnapshot, query: Workspa
         });
         case "dashboards":
             if (!snapshot.workspaces.some(({ id }) => {
+
                 return id === query.workspaceId;
             })) {
                 throw new Error("Workspace is unavailable.");
             }
+
             return snapshot.dashboards.filter(({ workspaceId }) => {
+
                 return workspaceId === query.workspaceId;
             })
                 .map(({ id, name, workspaceId }) => {
+
                     return {
                         id,
                         name,
@@ -55,6 +61,7 @@ export function readWorkspaceCatalog(snapshot: WorkspaceSnapshot, query: Workspa
             if (!snapshot.selection) {
                 throw new Error("Workspace selection is unavailable.");
             }
+
             return { ...snapshot.selection };
     }
 }

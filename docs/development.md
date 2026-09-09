@@ -18,14 +18,17 @@ A cosmetic change normally needs the relevant component checks and visual QA,
 plus a native scenario only when native views or input are affected. Detailed
 validation rules belong in service tests; native tests exercise real preload,
 IPC, process isolation, and persistence wiring. See
-[Electron test responsibilities](../apps/desktop/tests/electron/README.md) before
+[Electron test responsibilities](../apps/desktop/test/e2e/README.md) before
 adding another end-to-end assertion.
 
 `pnpm lint` also validates repository boundaries, including catalog and
 workspace dependency declarations, renderer privilege isolation, and the
 runtime neutrality of public plugin and ACP contracts.
 
-`pnpm test` runs fast Node.js unit tests and headless Chromium browser tests.
+`pnpm test` runs Node.js unit and integration tests and headless Chromium browser tests.
+Tests live under each workspace's `test/unit/` or `test/integration/`, mirroring
+the source subtree. Desktop Vitest projects separate `unit`, `integration`, and
+`browser` execution; `test/e2e/` is run separately by `pnpm test:electron`.
 Browser tests use the `*.browser.test.ts` suffix and cover renderer plugin DOM
 behavior; they do not replace Electron main/preload integration testing.
 Before the first browser test run, install Chromium with:

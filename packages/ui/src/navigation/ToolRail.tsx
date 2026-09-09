@@ -14,6 +14,7 @@ export interface ToolRailProps extends HTMLAttributes<HTMLElement> {
 }
 
 export function ToolRail({ className, children, ...props }: ToolRailProps) {
+
     return <nav
         className={cn("avesd-tool-rail", className)}
         {...props}
@@ -31,6 +32,7 @@ export const ToolRailButton = forwardRef<HTMLButtonElement, ToolRailButtonProps>
     { className, children, placement = "default", type = "button", ...props },
     ref,
 ) {
+
     return <button
         ref={ref}
         className={cn("avesd-tool-rail-button", placement === "bottom" && "is-bottom", className)}

@@ -15,6 +15,7 @@ export class AcpClient {
         readonly title?: string;
         readonly version: string;
     }, clientCapabilities: AcpClientCapabilities): Promise<AcpInitializeResult> {
+
         return this.transport.request("initialize", {
             clientCapabilities,
             clientInfo,
@@ -25,6 +26,7 @@ export class AcpClient {
     newSession(cwd: string): Promise<{
         readonly sessionId: string;
     }> {
+
         return this.transport.request("session/new", {
             cwd,
             mcpServers: [],
@@ -32,6 +34,7 @@ export class AcpClient {
     }
 
     loadSession(sessionId: string, cwd: string): Promise<void> {
+
         return this.transport.request("session/load", {
             cwd,
             mcpServers: [],
@@ -42,6 +45,7 @@ export class AcpClient {
     prompt(sessionId: string, prompt: readonly AcpContentBlock[]): Promise<{
         readonly stopReason: string;
     }> {
+
         return this.transport.request("session/prompt", {
             prompt,
             sessionId,
@@ -49,11 +53,14 @@ export class AcpClient {
     }
 
     cancel(sessionId: string): void {
+
         this.transport.notify("session/cancel", { sessionId });
     }
 
     onSessionUpdate(listener: (update: AcpSessionUpdate) => void): () => void {
+
         return this.transport.onNotification((method, params) => {
+
             if (method === "session/update") {
                 listener(params as AcpSessionUpdate);
             }

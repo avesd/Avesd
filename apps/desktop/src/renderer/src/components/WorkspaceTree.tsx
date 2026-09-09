@@ -20,6 +20,7 @@ export function WorkspaceTree({
     readonly storage: WorkspaceStorageApi;
     readonly onSelect: (scope: DashboardScope) => Promise<void>;
 }) {
+
     const [
         snapshot,
         setSnapshot,
@@ -38,15 +39,19 @@ export function WorkspaceTree({
     ] = useState<string>();
 
     useEffect(() => {
+
         let active = true;
         const refresh = () => {
+
             void storage.load().then((value) => {
+
                 if (active) {
                     setSnapshot(parseWorkspaceSnapshot(value));
                     setError(undefined);
                 }
             })
                 .catch(() => {
+
                     if (active) {
                         setError("Workspace list could not be loaded.");
                     }
@@ -54,14 +59,18 @@ export function WorkspaceTree({
         };
         refresh();
         const unsubscribe = storage.subscribe(refresh);
+
         return () => {
+
             active = false;
             unsubscribe();
         };
     }, [storage]);
 
     const toggle = (workspaceId: string) => {
+
         setCollapsed((current) => {
+
             const next = new Set(current);
             if (next.has(workspaceId)) {
                 next.delete(workspaceId);
@@ -69,11 +78,13 @@ export function WorkspaceTree({
             else {
                 next.add(workspaceId);
             }
+
             return next;
         });
     };
 
     const select = async (scope: DashboardScope) => {
+
         if (busy || (scope.workspaceId === navigation.scope.workspaceId && scope.dashboardId === navigation.scope.dashboardId)) {
             return;
         }
@@ -107,10 +118,13 @@ export function WorkspaceTree({
             aria-busy={busy}
         >
             {workspaces.map((workspace) => {
+
                 const isCollapsed = collapsed.has(workspace.id);
                 const children = dashboards.filter((dashboard) => {
+
                     return dashboard.workspaceId === workspace.id;
                 });
+
                 return <div
                     className="workspace-tree-group"
                     key={workspace.id}
@@ -121,6 +135,7 @@ export function WorkspaceTree({
                         role="treeitem"
                         aria-expanded={!isCollapsed}
                         onClick={() => {
+
                             return void toggle(workspace.id);
                         }}
                     >
@@ -142,7 +157,9 @@ export function WorkspaceTree({
                         role="group"
                     >
                         {children.map((dashboard) => {
+
                             const selected = dashboard.workspaceId === navigation.scope.workspaceId && dashboard.id === navigation.scope.dashboardId;
+
                             return <button
                                 className="workspace-tree-dashboard"
                                 type="button"
@@ -151,6 +168,7 @@ export function WorkspaceTree({
                                 aria-current={selected ? "page" : undefined}
                                 disabled={busy}
                                 onClick={() => {
+
                                     return void select({
                                         workspaceId: dashboard.workspaceId,
                                         dashboardId: dashboard.id,

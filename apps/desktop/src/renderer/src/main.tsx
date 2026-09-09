@@ -19,6 +19,7 @@ if (!rootElement) {
 }
 
 const render = async (): Promise<void> => {
+
     await startWorkbench();
 
     createRoot(rootElement).render(<StrictMode>

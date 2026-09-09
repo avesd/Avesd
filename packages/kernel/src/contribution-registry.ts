@@ -26,6 +26,7 @@ export class ContributionRegistry<T> {
     readonly #listeners = new Set<Listener>();
 
     contribute(key: string, value: T, pluginId?: string): Dispose {
+
         const contribution = {
             pluginId,
             token: Symbol(key),
@@ -38,8 +39,10 @@ export class ContributionRegistry<T> {
         this.#emit();
 
         return () => {
+
             const currentEntries = this.#contributions.get(key);
             const index = currentEntries?.findIndex(({ token }) => {
+
                 return token === contribution.token;
             }) ?? -1;
 
@@ -57,36 +60,45 @@ export class ContributionRegistry<T> {
     }
 
     get(key: string): T | undefined {
+
         return this.#contributions.get(key)?.at(-1)?.value;
     }
 
     getAll(key: string): readonly RegisteredContribution<T>[] {
+
         const current = this.#allSnapshots.get(key);
         if (current) {
             return current;
         }
         const snapshot = (this.#contributions.get(key) ?? []).map(({ pluginId, value }) => {
+
             return {
                 pluginId,
                 value,
             };
         });
         this.#allSnapshots.set(key, snapshot);
+
         return snapshot;
     }
 
     keys(): readonly string[] {
+
         return [...this.#contributions.keys()];
     }
 
     subscribe(listener: Listener): Dispose {
+
         this.#listeners.add(listener);
+
         return () => {
+
             this.#listeners.delete(listener);
         };
     }
 
     #emit(): void {
+
         for (const listener of this.#listeners) {
             listener();
         }

@@ -9,12 +9,15 @@ import type { AcpRuntimeEvent, AcpSessionConnectionOptions } from "./acp-session
 import * as acp from "@agentclientprotocol/sdk";
 
 async function sessionRequest<T>(connection: acp.ClientConnection, work: Promise<T>): Promise<T> {
+
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
         return await Promise.race([
             work,
             new Promise<never>((_resolve, reject) => {
+
                 timer = setTimeout(() => {
+
                     connection.close(); reject(new Error("Agent configuration request timed out."));
                 }, 30000);
             }),
@@ -34,6 +37,7 @@ export class AcpSessionConnection {
     ) {}
 
     static async connect(options: AcpSessionConnectionOptions): Promise<AcpSessionConnection> {
+
         const configuration = { options: [] as acp.SessionConfigOption[] };
         let activeSessionId: string | undefined;
         const toolCalls = new Map<string, {
@@ -48,7 +52,9 @@ export class AcpSessionConnection {
             .onRequest(
                 acp.methods.client.session.requestPermission,
                 ({ params }) => {
+
                     const allowOnce = params.options.find(({ kind }) => {
+
                         return kind === "allow_once";
                     });
                     const key = `${params.sessionId}/${params.toolCall.toolCallId}`;
@@ -58,6 +64,7 @@ export class AcpSessionConnection {
                     };
                     const authorized = options.authorizeToolCall?.(toolCall)
             ?? (!!toolCall.name && !!options.allowedToolNames?.includes(toolCall.name));
+
                     return authorized && allowOnce
                         ? {
                             outcome: {
@@ -69,6 +76,7 @@ export class AcpSessionConnection {
                 },
             )
             .onNotification(acp.methods.client.session.update, ({ params }) => {
+
                 if (activeSessionId && params.sessionId !== activeSessionId) {
                     return;
                 }
@@ -106,15 +114,18 @@ export class AcpSessionConnection {
                     });
                 } else if (update.sessionUpdate === "tool_call" || update.sessionUpdate === "tool_call_update") {
                     const content = update.content?.map(item => {
+
                         if (item.type === "content") {
                             if (item.content.type === "text") {
                                 return item.content.text;
                             }
+
                             return `[${item.content.type} content]`;
                         }
                         if (item.type === "diff") {
                             return `${item.path}\n--- Before\n${item.oldText ?? ""}\n+++ After\n${item.newText}`;
                         }
+
                         return "Terminal output is not provided by this client.";
                     }).join("\n\n");
                     options.onEvent({
@@ -148,6 +159,7 @@ export class AcpSessionConnection {
 
             activeSessionId = session.sessionId;
             configuration.options = session.configOptions ?? configuration.options;
+
             return new AcpSessionConnection(
                 connection,
                 initialized.agentInfo?.title ?? initialized.agentInfo?.name ?? "Agent",
@@ -168,26 +180,33 @@ export class AcpSessionConnection {
             name: string;
         }[];
     } {
+
         return this.selectOptions("model");
     }
 
     get efforts() {
+
         return this.selectOptions("effort");
     }
 
     private selectOptions(kind: "model" | "effort") {
+
         const option = this.configurationOption(kind);
+
         return option ? {
             id: option.currentValue,
             choices: option.options.flatMap(item =>
             {
+
                 return "options" in item ? item.options.map(choice => {
+
                     return {
                         ...choice,
                         name: `${item.name} · ${choice.name}`,
                     };
                 }) : [item];
             }).map(item => {
+
                 return {
                     id: item.value,
                     name: item.name,
@@ -197,10 +216,12 @@ export class AcpSessionConnection {
     }
 
     private configurationOption(kind: "model" | "effort") {
+
         return this.configuration.options.find((option): option is acp.SessionConfigOption & acp.SessionConfigSelect & {
             type: "select";
         } =>
         {
+
             return option.type === "select" && (kind === "model"
                 ? option.category === "model" || option.id === "model"
                 : option.category === "thought_level" || option.id === "reasoning_effort");
@@ -208,16 +229,20 @@ export class AcpSessionConnection {
     }
 
     async selectModel(id: string): Promise<void> {
+
         await this.selectOption("model", id);
     }
 
     async selectEffort(id: string): Promise<void> {
+
         await this.selectOption("effort", id);
     }
 
     private async selectOption(kind: "model" | "effort", id: string): Promise<void> {
+
         const option = this.configurationOption(kind);
         if (!option || !this.selectOptions(kind).choices.some(model => {
+
             return model.id === id;
         })) {
             throw new Error(`${kind === "model" ? "Model" : "Reasoning effort"} is unavailable in this session.`);
@@ -232,16 +257,19 @@ export class AcpSessionConnection {
     }
 
     async cancel(): Promise<void> {
+
         await this.connection.agent.notify(acp.methods.agent.session.cancel, {
             sessionId: this.sessionId,
         });
     }
 
     close(): void {
+
         this.connection.close();
     }
 
     async prompt(text: string): Promise<string> {
+
         const response = await this.connection.agent.request(
             acp.methods.agent.session.prompt,
             {

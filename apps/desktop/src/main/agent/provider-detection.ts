@@ -20,8 +20,10 @@ export interface CliProbe {
 
 /** Resolve without invoking a shell or sourcing user startup scripts. */
 export async function resolveUserExecutable(command: string, configuredPath: string, environment = process.env, home = homedir()): Promise<string | undefined> {
+
     const directories = [
         ...(environment.PATH ?? "").split(delimiter).filter(path => {
+
             return isAbsolute(path) && !path.includes("node_modules");
         }),
         join(home, ".local", "bin"),
@@ -35,26 +37,32 @@ export async function resolveUserExecutable(command: string, configuredPath: str
     ];
     const candidates = configuredPath ? [configuredPath] : [...new Set(directories)].flatMap(directory =>
     {
+
         return (process.platform === "win32" ? [
             ".exe",
             ".cmd",
             ".bat",
             "",
         ] : [""]).map(extension => {
+
             return join(directory, command + extension);
         });
     });
     for (const candidate of candidates) {
         try {
             if ((await stat(candidate)).isFile()) {
-                await access(candidate, constants.X_OK); return candidate;
+                await access(candidate, constants.X_OK);
+
+                return candidate;
             }
         } catch { /* Try the next installation directory. */ }
     }
+
     return undefined;
 }
 
 export async function probeCli(command: string, configuredPath: string): Promise<CliProbe> {
+
     const resolvedPath = await resolveUserExecutable(command, configuredPath);
     if (!resolvedPath) {
         return {
@@ -69,19 +77,24 @@ export async function probeCli(command: string, configuredPath: string): Promise
             message: "Select the native executable instead of a Windows command shim.",
         };
     }
+
     return new Promise(resolve => {
+
         execFile(resolvedPath, ["--version"], {
             timeout: 8000,
             killSignal: "SIGKILL",
             maxBuffer: 64 * 1024,
             windowsHide: true,
         }, (error, stdout) => {
+
             if (error) {
                 resolve({
                     status: "error",
                     resolvedPath,
                     message: error.killed ? "Version check timed out. Check the executable and refresh." : "CLI was found but could not run. Check the executable and refresh.",
-                }); return;
+                });
+
+                return;
             }
             const version = stdout.match(/\b\d+\.\d+\.\d+(?:[-+][\w.-]+)?\b/)?.[0];
             resolve({

@@ -42,6 +42,7 @@ export interface WidgetWorkspaceTransport {
 }
 
 export function parseWidgetWorkspaceRequest(input: unknown): WidgetWorkspaceRequest {
+
     if (!input || typeof input !== "object") {
         throw new Error("Invalid widget workspace request.");
     }
@@ -74,21 +75,25 @@ export function parseWidgetWorkspaceRequest(input: unknown): WidgetWorkspaceRequ
 }
 
 export function requiredWorkspaceCapability(request: WidgetWorkspaceRequest): WidgetWorkspaceCapability {
+
     if (request.type === "files" || request.type === "sqlite" || request.type === "resources") {
         return request.type;
     }
     if (request.type === "command") {
         return request.command.type === "select" ? "navigation" : "management";
     }
+
     return request.type === "current" ? "navigation" : "catalog";
 }
 
 /** Fixed methods only; transports authenticate the caller independently of arguments. */
 export function createWidgetWorkspaceServices(capabilities: readonly WidgetWorkspaceCapability[], transport: WidgetWorkspaceTransport): WidgetWorkspaceServices {
+
     return {
         resources: capabilities.includes("resources") ? createResourceServices(transport) : undefined,
         files: capabilities.includes("files") ? {
             read: path => {
+
                 return transport.invoke({
                     type: "files",
                     operation: "read",
@@ -96,6 +101,7 @@ export function createWidgetWorkspaceServices(capabilities: readonly WidgetWorks
                 }) as Promise<Uint8Array>;
             },
             readText: async path => {
+
                 return new TextDecoder().decode(await transport.invoke({
                     type: "files",
                     operation: "read",
@@ -103,6 +109,7 @@ export function createWidgetWorkspaceServices(capabilities: readonly WidgetWorks
                 }) as Uint8Array);
             },
             write: async (path, value) => {
+
                 await transport.invoke({
                     type: "files",
                     operation: "write",
@@ -111,6 +118,7 @@ export function createWidgetWorkspaceServices(capabilities: readonly WidgetWorks
                 });
             },
             list: (path = "") => {
+
                 return transport.invoke({
                     type: "files",
                     operation: "list",
@@ -118,6 +126,7 @@ export function createWidgetWorkspaceServices(capabilities: readonly WidgetWorks
                 }) as Promise<readonly PluginFileEntry[]>;
             },
             remove: async path => {
+
                 await transport.invoke({
                     type: "files",
                     operation: "remove",
@@ -127,13 +136,16 @@ export function createWidgetWorkspaceServices(capabilities: readonly WidgetWorks
         } : undefined,
         sqlite: capabilities.includes("sqlite") ? {
             async open(path) {
+
                 await transport.invoke({
                     type: "sqlite",
                     operation: "open",
                     path,
                 });
+
                 return {
                     query: (sql, parameters = []) => {
+
                         return transport.invoke({
                             type: "sqlite",
                             operation: "query",
@@ -145,6 +157,7 @@ export function createWidgetWorkspaceServices(capabilities: readonly WidgetWorks
                         }) as Promise<readonly Readonly<Record<string, SqlValue>>[]>;
                     },
                     execute: (sql, parameters = []) => {
+
                         return transport.invoke({
                             type: "sqlite",
                             operation: "execute",
@@ -156,6 +169,7 @@ export function createWidgetWorkspaceServices(capabilities: readonly WidgetWorks
                         }) as Promise<SqlMutationResult>;
                     },
                     transaction: statements => {
+
                         return transport.invoke({
                             type: "sqlite",
                             operation: "transaction",
@@ -168,9 +182,11 @@ export function createWidgetWorkspaceServices(capabilities: readonly WidgetWorks
         } : undefined,
         catalog: capabilities.includes("catalog") ? {
             listWorkspaces: () => {
+
                 return transport.invoke({ type: "workspaces" }) as Promise<readonly Workspace[]>;
             },
             listDashboards: (workspaceId) => {
+
                 return transport.invoke({
                     type: "dashboards",
                     workspaceId,
@@ -180,9 +196,11 @@ export function createWidgetWorkspaceServices(capabilities: readonly WidgetWorks
         } : undefined,
         navigation: capabilities.includes("navigation") ? {
             getCurrent: () => {
+
                 return transport.invoke({ type: "current" }) as Promise<DashboardScope>;
             },
             select: async (scope) => {
+
                 await transport.invoke({
                     type: "command",
                     command: {
@@ -195,6 +213,7 @@ export function createWidgetWorkspaceServices(capabilities: readonly WidgetWorks
         } : undefined,
         management: capabilities.includes("management") ? {
             execute: async (command) => {
+
                 await transport.invoke({
                     type: "command",
                     command,

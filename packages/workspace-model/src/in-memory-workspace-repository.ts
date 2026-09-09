@@ -35,10 +35,12 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
     readonly #listeners = new Set<WorkspaceRepositoryListener>();
 
     constructor(snapshot?: WorkspaceSnapshot) {
+
         this.#hydrate(snapshot);
     }
 
     replace(snapshot?: WorkspaceSnapshot, notify = true): void {
+
         this.#workspaces.clear();
         this.#dashboards.clear();
         this.#dataSources.clear();
@@ -50,6 +52,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
     }
 
     #hydrate(snapshot?: WorkspaceSnapshot): void {
+
         this.#selection = snapshot?.selection;
         for (const workspace of snapshot?.workspaces ?? []) {
             this.#workspaces.set(workspace.id, workspace);
@@ -66,9 +69,11 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
     }
 
     async createWorkspace(workspace: CreateWorkspace): Promise<Workspace> {
+
         this.#assertAvailable(this.#workspaces, workspace.id, "workspace");
         this.#workspaces.set(workspace.id, workspace);
         this.#emit();
+
         return workspace;
     }
 
@@ -76,6 +81,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
         scope: WorkspaceScope,
         dashboard: CreateDashboard,
     ): Promise<Dashboard> {
+
         this.#requireWorkspace(scope.workspaceId);
         this.#assertAvailable(this.#dashboards, dashboard.id, "dashboard");
         const created = {
@@ -85,6 +91,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
         };
         this.#dashboards.set(created.id, created);
         this.#emit();
+
         return created;
     }
 
@@ -92,6 +99,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
         scope: DataSourceScope,
         dataSource: CreateDataSource,
     ): Promise<DataSource> {
+
         this.#requireWorkspace(scope.workspaceId);
         if (scope.kind === "dashboard") {
             this.#requireDashboard(scope);
@@ -104,31 +112,42 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
         };
         this.#dataSources.set(created.id, created);
         this.#emit();
+
         return created;
     }
 
     async listWorkspaces(): Promise<readonly Workspace[]> {
+
         return [...this.#workspaces.values()];
     }
 
     async listDashboards(scope: WorkspaceScope): Promise<readonly Dashboard[]> {
+
         this.#requireWorkspace(scope.workspaceId);
+
         return [...this.#dashboards.values()].filter((dashboard) => {
+
             return dashboard.workspaceId === scope.workspaceId;
         });
     }
 
     async listWidgetInstances(scope: DashboardScope): Promise<readonly WidgetInstance[]> {
+
         this.#requireDashboard(scope);
+
         return [...this.#widgets.values()].filter((widget) =>
         {
+
             return widget.workspaceId === scope.workspaceId && widget.dashboardId === scope.dashboardId;
         });
     }
 
     async listDataSources(scope: WorkspaceScope): Promise<readonly DataSource[]> {
+
         this.#requireWorkspace(scope.workspaceId);
+
         return [...this.#dataSources.values()].filter((dataSource) => {
+
             return dataSource.scope.workspaceId === scope.workspaceId;
         });
     }
@@ -137,6 +156,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
         scope: WorkspaceScope,
         dataSourceId: DataSourceId,
     ): Promise<DataSource> {
+
         this.#requireWorkspace(scope.workspaceId);
         const source = this.#dataSources.get(dataSourceId);
         if (!source) {
@@ -148,6 +168,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
                 `data source ${dataSourceId} does not belong to workspace ${scope.workspaceId}`,
             );
         }
+
         return source;
     }
 
@@ -157,6 +178,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
         expectedRevision: number,
         value: JsonValue,
     ): Promise<DataSource> {
+
         const source = await this.readDataSource(scope, dataSourceId);
         if (source.revision !== expectedRevision) {
             throw new WorkspaceModelError(
@@ -171,11 +193,14 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
         };
         this.#dataSources.set(dataSourceId, updated);
         this.#emit();
+
         return updated;
     }
 
     async readDashboardLayout(scope: DashboardScope): Promise<DashboardLayoutSnapshot> {
+
         const dashboard = this.#requireDashboard(scope);
+
         return {
             ...scope,
             revision: dashboard.layoutRevision,
@@ -188,6 +213,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
         expectedRevision: number,
         widgets: readonly WidgetInstance[],
     ): Promise<DashboardLayoutSnapshot> {
+
         const dashboard = this.#requireDashboard(scope);
         if (dashboard.layoutRevision !== expectedRevision) {
             throw new WorkspaceModelError(
@@ -228,6 +254,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
         };
         this.#dashboards.set(updated.id, updated);
         this.#emit();
+
         return {
             ...scope,
             revision: updated.layoutRevision,
@@ -236,6 +263,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
     }
 
     async deleteDashboard(scope: DashboardScope): Promise<void> {
+
         this.#requireDashboard(scope);
         if (this.#selection?.dashboardId === scope.dashboardId) {
             this.#selection = undefined;
@@ -266,6 +294,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
     }
 
     async deleteDataSource(scope: WorkspaceScope, dataSourceId: DataSourceId): Promise<void> {
+
         await this.readDataSource(scope, dataSourceId);
         this.#dataSources.delete(dataSourceId);
         for (const [
@@ -276,9 +305,11 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
                 inputId,
                 ids,
             ]) => {
+
                 return [
                     inputId,
                     ids.filter((candidate) => {
+
                         return candidate !== dataSourceId;
                     }),
                 ];
@@ -292,6 +323,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
     }
 
     async deleteWorkspace(scope: WorkspaceScope): Promise<void> {
+
         this.#requireWorkspace(scope.workspaceId);
         if (this.#selection?.workspaceId === scope.workspaceId) {
             this.#selection = undefined;
@@ -326,6 +358,7 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
     }
 
     async snapshot(): Promise<WorkspaceSnapshot> {
+
         return {
             ...(this.#selection ? { selection: this.#selection } : {}),
             dashboards: [...this.#dashboards.values()],
@@ -337,19 +370,24 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
     }
 
     subscribe(listener: WorkspaceRepositoryListener): () => void {
+
         this.#listeners.add(listener);
+
         return () => {
+
             return this.#listeners.delete(listener);
         };
     }
 
     #assertAvailable<Key>(map: ReadonlyMap<Key, unknown>, id: Key, resource: string): void {
+
         if (map.has(id)) {
             throw new WorkspaceModelError("already-exists", `${resource} already exists: ${String(id)}`);
         }
     }
 
     #requireDashboard(scope: DashboardScope): Dashboard {
+
         const dashboard = this.#dashboards.get(scope.dashboardId);
         if (!dashboard) {
             throw new WorkspaceModelError("not-found", `dashboard not found: ${scope.dashboardId}`);
@@ -360,18 +398,22 @@ export class InMemoryWorkspaceRepository implements WorkspaceRepository {
                 `dashboard ${scope.dashboardId} does not belong to workspace ${scope.workspaceId}`,
             );
         }
+
         return dashboard;
     }
 
     #requireWorkspace(id: WorkspaceId): Workspace {
+
         const workspace = this.#workspaces.get(id);
         if (!workspace) {
             throw new WorkspaceModelError("not-found", `workspace not found: ${id}`);
         }
+
         return workspace;
     }
 
     #emit(): void {
+
         for (const listener of this.#listeners) {
             listener();
         }

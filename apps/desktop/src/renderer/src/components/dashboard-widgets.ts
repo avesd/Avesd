@@ -16,8 +16,10 @@ export const resolveWidget = (
     available: RegisteredWidgets,
     instance: WidgetInstance,
 ): WidgetContribution | undefined => {
+
     return available.find(({ pluginId, value }) =>
     {
+
         return pluginId === instance.pluginId && value.widgetTypeId === instance.widgetTypeId;
     })?.value;
 };

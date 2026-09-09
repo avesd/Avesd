@@ -52,6 +52,7 @@ export interface WorkspaceNavigationState {
 }
 
 export function sameDashboard(first: DashboardScope | undefined, second: DashboardScope | undefined): boolean {
+
     return first?.workspaceId === second?.workspaceId && first?.dashboardId === second?.dashboardId;
 }
 
@@ -64,6 +65,7 @@ export async function navigateWorkspace(
     snapshot: WorkspaceSnapshot;
     state: WorkspaceNavigationState;
 }> {
+
     const repository = new InMemoryWorkspaceRepository(parseWorkspaceSnapshot(input));
     let workspaces = await repository.listWorkspaces();
     if (!workspaces.length) {
@@ -99,6 +101,7 @@ export async function navigateWorkspace(
         }
         case "renameWorkspace":
             if (!workspaces.some((item) => {
+
                 return item.id === command.workspaceId;
             })) {
                 throw new Error("Workspace is unavailable.");
@@ -147,6 +150,7 @@ export async function navigateWorkspace(
                 scope = {
                     workspaceId: command.scope.workspaceId,
                     dashboardId: siblings.find((item) => {
+
                         return item.id !== command.scope.dashboardId;
                     })!.id,
                 };
@@ -173,6 +177,7 @@ export async function navigateWorkspace(
         ...stored,
         selection: scope,
         workspaces: command.type === "renameWorkspace" ? stored.workspaces.map((workspace) => {
+
             return workspace.id === command.workspaceId
                 ? {
                     ...workspace,
@@ -180,6 +185,7 @@ export async function navigateWorkspace(
                 } : workspace;
         }) : stored.workspaces,
         dashboards: renamed ? stored.dashboards.map((dashboard) => {
+
             return dashboard.id === renamed.scope.dashboardId
                 ? {
                     ...dashboard,
@@ -187,12 +193,14 @@ export async function navigateWorkspace(
                 } : dashboard;
         }) : stored.dashboards,
     };
+
     return {
         snapshot,
         state: {
             scope,
             workspaces: snapshot.workspaces,
             dashboards: snapshot.dashboards.filter((item) => {
+
                 return item.workspaceId === scope.workspaceId;
             }),
         },
@@ -200,9 +208,11 @@ export async function navigateWorkspace(
 }
 
 function dashboardName(input: string): string {
+
     const name = input.trim();
     if (!name || name.length > 100) {
         throw new Error("Use a dashboard name between 1 and 100 characters.");
     }
+
     return name;
 }

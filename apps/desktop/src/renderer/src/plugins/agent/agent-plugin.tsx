@@ -5,29 +5,51 @@
  * @description Agent Plugin
  */
 
+import { agentTierLabels } from "../../../../shared/agent/sessions";
 import { AgentDock } from "../../components/AgentDock";
+import { sessionAgentService } from "../../components/session-agent-service";
 import type { WorkbenchView } from "../../workbench/types";
 import { agentOverlayContribution } from "../../workbench/types";
+import { useAgentPanel } from "../../workbench/WorkbenchChrome";
 import type { AgentService, PluginDefinition } from "@avesd/plugin-api";
+import { useMemo } from "react";
 
-const createAgentView = (service: AgentService): WorkbenchView => {
+const ManagedAgentDock = () => {
+
+    const { activeSession } = useAgentPanel();
+    const service = useMemo(() => {
+
+        return activeSession ? sessionAgentService(window.avesd.agentSessions, activeSession.id) : undefined;
+    }, [activeSession?.id]);
+
+    return service && activeSession ? <AgentDock
+        key={activeSession.id}
+        service={service}
+        managed
+        label={agentTierLabels[activeSession.tier]}
+    /> : null;
+};
+
+const createAgentView = (_service: AgentService): WorkbenchView => {
+
     return {
         render: () => {
-            return <AgentDock
-                service={service}
-            />;
+
+            return <ManagedAgentDock />;
         },
     };
 };
 
 export const agentPlugin: PluginDefinition = {
     activate(context) {
+
         const service = context.services.agent;
         if (!service) {
             throw new Error("Agent capability was not provided");
         }
 
         context.effect(() => {
+
             return context.contributions.contribute(
                 agentOverlayContribution,
                 createAgentView(service),

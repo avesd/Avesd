@@ -10,6 +10,7 @@ import type { WorkspaceSnapshot } from "./workspace-model";
 
 /** Validate persisted data independently of installed plugins or a concrete driver. */
 export const parseWorkspaceSnapshot = (input: unknown): WorkspaceSnapshot | undefined => {
+
     if (input === undefined || input === null) {
         return undefined;
     }
@@ -25,12 +26,14 @@ export const parseWorkspaceSnapshot = (input: unknown): WorkspaceSnapshot | unde
     const sources = entities(snapshot.dataSources);
 
     const requireWorkspace = (id: unknown) => {
+
         identifier(id);
         if (!workspaces.has(id)) {
             invalid("workspace reference");
         }
     };
     const requireDashboard = (workspaceId: unknown, dashboardId: unknown) => {
+
         requireWorkspace(workspaceId);
         identifier(dashboardId);
         if (dashboards.get(dashboardId)?.workspaceId !== workspaceId) {
@@ -114,35 +117,42 @@ export const parseWorkspaceSnapshot = (input: unknown): WorkspaceSnapshot | unde
     try {
         for (const dashboard of validated.dashboards) {
             assertDashboardLayout(validated.widgets.filter((widget) => {
+
                 return widget.dashboardId === dashboard.id;
             }));
         }
     } catch {
         invalid("dashboard layout");
     }
+
     // Detach the validated snapshot from callers that might mutate it while a save waits.
     return structuredClone(validated);
 };
 
 function invalid(field: string): never {
+
     throw new Error(`Invalid workspace data: ${field}`);
 }
 
 function record(value: unknown): Record<string, unknown> {
+
     if (value === null || typeof value !== "object" || Array.isArray(value)
     || (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null)) {
         invalid("expected an object");
     }
+
     return value as Record<string, unknown>;
 }
 
 function text(value: unknown): asserts value is string {
+
     if (typeof value !== "string") {
         invalid("expected a string");
     }
 }
 
 function identifier(value: unknown): asserts value is string {
+
     text(value);
     if (!value.trim()) {
         invalid("empty identifier");
@@ -150,12 +160,14 @@ function identifier(value: unknown): asserts value is string {
 }
 
 function integer(value: unknown, minimum: number): void {
+
     if (typeof value !== "number" || !Number.isSafeInteger(value) || value < minimum) {
         invalid("invalid integer");
     }
 }
 
 function entities(value: unknown): Map<string, Record<string, unknown>> {
+
     if (!Array.isArray(value)) {
         invalid("expected an array");
     }
@@ -168,10 +180,12 @@ function entities(value: unknown): Map<string, Record<string, unknown>> {
         }
         result.set(entity.id, entity);
     }
+
     return result;
 }
 
 function assertJson(value: unknown, ancestors: Set<object>): void {
+
     if (value === null || typeof value === "string" || typeof value === "boolean") {
         return;
     }

@@ -29,6 +29,7 @@ export type DropdownMenuContentProps = ComponentProps<typeof Primitive.Content>
     };
 
 export function DropdownMenuContent({ className, margin, portalProps, ...props }: DropdownMenuContentProps) {
+
     return <Primitive.Portal
         {...portalProps}
     >
@@ -41,6 +42,7 @@ export function DropdownMenuContent({ className, margin, portalProps, ...props }
 
 export type DropdownMenuItemProps = ComponentProps<typeof Primitive.Item> & VariantProps<typeof dropdownMenuItemVariants>;
 export function DropdownMenuItem({ className, variant, isUseCursorPointer, ...props }: DropdownMenuItemProps) {
+
     return <Primitive.Item
         className={cn(dropdownMenuItemVariants({
             variant,
@@ -52,6 +54,7 @@ export function DropdownMenuItem({ className, variant, isUseCursorPointer, ...pr
 
 export type DropdownMenuItemAppearanceProps = ComponentProps<"div"> & VariantProps<typeof dropdownMenuItemVariants>;
 export function DropdownMenuItemAppearance({ className, variant, isUseCursorPointer, ...props }: DropdownMenuItemAppearanceProps) {
+
     return <div
         className={cn(dropdownMenuItemVariants({
             variant,
@@ -71,6 +74,7 @@ export type DropdownMenuItemContentProps = ComponentProps<"div"> & {
     readonly endContent?: ReactNode;
 };
 export function DropdownMenuItemContent({ className, children, description, startContent, endContent, titleStartContent, titleEndContent, useHoverEffect, useFocusEffect, ...props }: DropdownMenuItemContentProps) {
+
     return <div
         className={cn("avesd-dropdown-item-content", {
             "has-hover-effect": useHoverEffect,
@@ -109,6 +113,7 @@ export type DropdownMenuLabelProps = ComponentProps<typeof Primitive.Label> & Va
     readonly description?: ReactNode;
 };
 export function DropdownMenuLabel({ className, fontWeight, titleClassName, descriptionClassName, children, startContent, endContent, description, ...props }: DropdownMenuLabelProps) {
+
     return <Primitive.Label
         className={cn(dropdownMenuLabelVariants({ fontWeight }), className)}
         {...props}
@@ -132,6 +137,7 @@ export function DropdownMenuLabel({ className, fontWeight, titleClassName, descr
 
 export type DropdownMenuCheckboxItemProps = ComponentProps<typeof Primitive.CheckboxItem>;
 export function DropdownMenuCheckboxItem({ className, children, checked, ...props }: DropdownMenuCheckboxItemProps) {
+
     return <Primitive.CheckboxItem
         className={cn("avesd-dropdown-item avesd-dropdown-choice", className)}
         checked={checked}
@@ -155,6 +161,7 @@ export function DropdownMenuCheckboxItem({ className, children, checked, ...prop
 
 export type DropdownMenuRadioGroupProps = ComponentProps<typeof Primitive.RadioGroup>;
 export function DropdownMenuRadioGroup({ className, value, ...props }: DropdownMenuRadioGroupProps) {
+
     return <Primitive.RadioGroup
         className={cn("avesd-dropdown-radio-group", className)}
         data-selected={value !== undefined && value !== ""}
@@ -165,6 +172,7 @@ export function DropdownMenuRadioGroup({ className, value, ...props }: DropdownM
 
 export type DropdownMenuRadioItemProps = ComponentProps<typeof Primitive.RadioItem> & VariantProps<typeof dropdownMenuRadioItemVariants>;
 export function DropdownMenuRadioItem({ className, children, hidePaddingWhenNotSelected, ...props }: DropdownMenuRadioItemProps) {
+
     return <Primitive.RadioItem
         className={cn(dropdownMenuRadioItemVariants({ hidePaddingWhenNotSelected }), className)}
         {...props}
@@ -184,6 +192,7 @@ export function DropdownMenuRadioItem({ className, children, hidePaddingWhenNotS
 
 export type DropdownMenuSeparatorProps = ComponentProps<typeof Primitive.Separator>;
 export function DropdownMenuSeparator({ className, ...props }: DropdownMenuSeparatorProps) {
+
     return <Primitive.Separator
         className={cn("avesd-dropdown-separator", className)}
         {...props}
@@ -192,6 +201,7 @@ export function DropdownMenuSeparator({ className, ...props }: DropdownMenuSepar
 
 export type DropdownMenuShortcutProps = ComponentProps<"span">;
 export function DropdownMenuShortcut({ className, ...props }: DropdownMenuShortcutProps) {
+
     return <span
         className={cn("avesd-dropdown-shortcut", className)}
         {...props}
@@ -202,6 +212,7 @@ export type DropdownMenuSubTriggerProps = ComponentProps<typeof Primitive.SubTri
     readonly isInset?: boolean;
 };
 export function DropdownMenuSubTrigger({ className, children, isInset, ...props }: DropdownMenuSubTriggerProps) {
+
     return <Primitive.SubTrigger
         className={cn("avesd-dropdown-item avesd-dropdown-sub-trigger", { "is-inset": isInset }, className)}
         {...props}
@@ -219,6 +230,7 @@ export type DropdownMenuSubContentProps = ComponentProps<typeof Primitive.SubCon
     readonly portalProps?: ComponentProps<typeof Primitive.Portal>;
 };
 export function DropdownMenuSubContent({ className, portalProps, ...props }: DropdownMenuSubContentProps) {
+
     return <Primitive.Portal
         {...portalProps}
     >

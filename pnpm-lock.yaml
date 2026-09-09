@@ -49,8 +49,8 @@ catalogs:
       specifier: 4.0.0-rc.9
       version: 4.0.0-rc.9
     electron:
-      specifier: 44.1.1
-      version: 44.1.1
+      specifier: 45.0.0-alpha.2
+      version: 45.0.0-alpha.2
     electron-vite:
       specifier: 5.0.0
       version: 5.0.0
@@ -185,7 +185,7 @@ importers:
         version: 4.1.11(playwright@1.62.1)(vite@8.2.2(@types/node@26.4.1)(esbuild@0.28.2))(vitest@4.1.11)
       electron:
         specifier: 'catalog:'
-        version: 44.1.1
+        version: 45.0.0-alpha.2
       electron-vite:
         specifier: 'catalog:'
         version: 5.0.0(vite@8.2.2(@types/node@26.4.1)(esbuild@0.28.2))
@@ -1816,8 +1816,8 @@ packages:
       '@swc/core':
         optional: true
 
-  electron@44.1.1:
-    resolution: {integrity: sha512-N2WCq2sbOkqQgvXJYx2lS6UiO8bF+Yr67trDnS6JKa2WxTCRQsAjGl57SUtdW9h6r5PlduBFjIhxhgd3dzv1hg==}
+  electron@45.0.0-alpha.2:
+    resolution: {integrity: sha512-RgUjw4YV9tOLLbg3FcOMoztUlmIPto4JaMlCPDbqtY+S/gBTMh3DWGeq1JIlLgJo8Vh7cuW/OJj9WFrqEPIGdA==}
     engines: {node: '>= 22.12.0'}
     hasBin: true
 
@@ -4266,7 +4266,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  electron@44.1.1:
+  electron@45.0.0-alpha.2:
     dependencies:
       '@electron-internal/extract-zip': 1.0.5
       '@electron/get': 5.1.0

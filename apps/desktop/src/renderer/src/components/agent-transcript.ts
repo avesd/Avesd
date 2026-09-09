@@ -17,8 +17,10 @@ export type TranscriptEntry =
     };
 
 export function appendAgentEvent(entries: readonly TranscriptEntry[], event: AgentEvent, id: number): readonly TranscriptEntry[] {
+
     if (event.type === "toolCall") {
         const index = entries.findIndex(entry => {
+
             return entry.kind === "tool" && entry.toolId === event.id;
         });
         const previous = entries[index];
@@ -34,17 +36,19 @@ export function appendAgentEvent(entries: readonly TranscriptEntry[], event: Age
             ...(event.input !== undefined ? { input: event.input } : {}),
             ...(event.output !== undefined ? { output: event.output } : {}),
         };
+
         return index < 0 ? [
             ...entries,
             tool,
         ] : entries.map((entry, offset) => {
+
             return offset === index ? tool : entry;
         });
     }
-    if (event.type === "messageChunk" || event.type === "thoughtChunk") {
-        const kind = event.type === "messageChunk" ? "answer" : "thought";
+    if (event.type === "messageChunk" || event.type === "thoughtChunk" || event.type === "userMessage") {
+        const kind = event.type === "userMessage" ? "user" : event.type === "messageChunk" ? "answer" : "thought";
         const last = entries.at(-1);
-        if (last?.kind === kind) {
+        if (kind !== "user" && last?.kind === kind) {
             return [
                 ...entries.slice(0, -1),
                 {
@@ -53,6 +57,7 @@ export function appendAgentEvent(entries: readonly TranscriptEntry[], event: Age
                 },
             ];
         }
+
         return [
             ...entries,
             {
@@ -62,11 +67,14 @@ export function appendAgentEvent(entries: readonly TranscriptEntry[], event: Age
             },
         ];
     }
+
     return entries;
 }
 
 export function finishTools(entries: readonly TranscriptEntry[]): readonly TranscriptEntry[] {
+
     return entries.map(entry => {
+
         return entry.kind === "tool" && [
             "pending",
             "in_progress",

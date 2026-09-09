@@ -27,20 +27,26 @@ export interface AgentProvider {
 
 /** The host resolves a user installation; bundled adapters only provide the ACP bridge. */
 export function createAgentProviders(installations: ProviderInstallations): readonly AgentProvider[] {
+
     return providerDefinitions.map(({ id, name }) => {
+
         return {
             id,
             name,
             availability: () => {
+
                 const item = installations.list().find(provider => {
+
                     return provider.id === id;
                 })!;
+
                 return {
                     available: item.enabled && item.status === "installed",
                     unavailableReason: !item.enabled ? "Disabled" : item.status === "not-found" ? "Not installed" : item.status === "checking" ? "Checking installation" : item.status === "error" ? "Needs attention" : undefined,
                 };
             },
             launch: async (): Promise<AgentLaunch> => {
+
                 const executable = await installations.executable(id);
                 if (id === "opencode") {
                     return {
@@ -49,6 +55,7 @@ export function createAgentProviders(installations: ProviderInstallations): read
                         env: { OPENCODE_CONFIG_CONTENT: JSON.stringify({ permission: { "*": "ask" } }) },
                     };
                 }
+
                 return {
                     command: process.execPath,
                     args: [moduleRequire.resolve(id === "codex" ? "@agentclientprotocol/codex-acp" : "@agentclientprotocol/claude-agent-acp/dist/index.js")],

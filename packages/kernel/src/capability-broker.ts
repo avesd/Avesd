@@ -26,8 +26,10 @@ export class CapabilityBroker {
     readonly #factories = new Map<PluginCapability, PluginServiceFactory<PluginCapability>>();
 
     constructor(authorize: CapabilityAuthorizer = () => {
+
         return false;
     }) {
+
         this.#authorize = authorize;
     }
 
@@ -35,6 +37,7 @@ export class CapabilityBroker {
         capability: TCapability,
         factory: PluginServiceFactory<TCapability>,
     ): void {
+
         if (this.#factories.has(capability)) {
             throw new Error(`Capability already registered: ${capability}`);
         }
@@ -49,6 +52,7 @@ export class CapabilityBroker {
         pluginId: string,
         requestedCapabilities: readonly PluginCapability[],
     ): Readonly<Partial<PluginServices>> {
+
         const services: Partial<PluginServices> = {};
 
         for (const capability of new Set(requestedCapabilities)) {

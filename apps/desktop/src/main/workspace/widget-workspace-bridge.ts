@@ -19,7 +19,9 @@ interface WidgetSession {
 export class WidgetWorkspaceBridge {
     readonly #sessions = new Map<WebContents, WidgetSession>();
     constructor() {
+
         ipcMain.handle(widgetWorkspaceChannels.invoke, (event, input: unknown) => {
+
             const session = this.#sessions.get(event.sender);
             if (!session || event.senderFrame !== event.sender.mainFrame) {
                 throw new Error("Widget workspace session is unavailable.");
@@ -31,29 +33,37 @@ export class WidgetWorkspaceBridge {
             if (!session.identity.capabilities.includes(requiredWorkspaceCapability(request))) {
                 throw new Error("Widget workspace capability was not granted.");
             }
+
             return session.invoke(request, () => {
+
                 return this.#sessions.get(event.sender) === session && !event.sender.isDestroyed();
             });
         });
     }
 
     register(contents: WebContents, session: WidgetSession): () => void {
+
         this.#sessions.set(contents, session);
         const dispose = () => {
+
             this.#sessions.delete(contents);
         };
         contents.once("destroyed", dispose);
+
         return () => {
+
             dispose(); contents.off("destroyed", dispose);
         };
     }
 
     changed(): void {
+
         for (const [
             contents,
             session,
         ] of this.#sessions) {
             if (!contents.isDestroyed() && session.identity.capabilities.some((capability) => {
+
                 return capability === "catalog" || capability === "navigation" || capability === "resources";
             })) {
                 contents.send(widgetWorkspaceChannels.changed);

@@ -17,6 +17,7 @@ export class ContributionBroker {
         point: ContributionPoint<T>,
         registry: ContributionRegistry<T>,
     ): Dispose {
+
         if (this.#registries.has(point)) {
             throw new Error(`Contribution point already registered: ${point.id}`);
         }
@@ -27,13 +28,16 @@ export class ContributionBroker {
         );
 
         return () => {
+
             this.#registries.delete(point);
         };
     }
 
     createScope(pluginId: string): PluginContributions {
+
         return Object.freeze({
             contribute: <T>(point: ContributionPoint<T>, value: T): Dispose => {
+
                 const registry = this.#registries.get(point);
                 if (!registry) {
                     throw new Error(`Unknown contribution point: ${point.id}`);

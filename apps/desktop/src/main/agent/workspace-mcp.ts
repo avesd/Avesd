@@ -17,6 +17,7 @@ if (!endpoint || !token || new URL(endpoint).hostname !== "127.0.0.1") {
 
 // This process is a protocol relay. It cannot independently mutate workspace files.
 const server = createAgentMcpServer(async (name, input) => {
+
     const response = await fetch(endpoint, {
         method: "POST",
         headers: {
@@ -32,9 +33,16 @@ const server = createAgentMcpServer(async (name, input) => {
     if (!response.ok) {
         throw new Error("Avesd host is unavailable.");
     }
+
     return await response.json() as AgentToolResult;
 });
 
 serveStdio(() => {
+
     return server;
-}, { onerror() { process.stderr.write("Avesd MCP request failed.\n"); } });
+}, {
+    onerror() {
+
+        process.stderr.write("Avesd MCP request failed.\n");
+    },
+});

@@ -6,6 +6,8 @@
  */
 
 import type { AgentProvidersApi } from "./agent/providers";
+import type { AgentSessionsApi } from "./agent/sessions";
+import type { WidgetAgentApi } from "./agent/widget-agent";
 import type { BrowserControlsApi } from "./browser/browser-controls";
 import type { WebSurfaceApi } from "./browser/web-surface";
 import type { LocalPluginsApi } from "./plugins/local-plugins";
@@ -25,6 +27,8 @@ export interface DesktopRuntime {
 }
 
 export interface DesktopApi {
+    readonly agentSessions: AgentSessionsApi;
+    readonly widgetAgent: WidgetAgentApi;
     readonly agentProviders: AgentProvidersApi;
     readonly preferences: WorkbenchPreferencesApi;
     readonly widgetWorkspace: DesktopWidgetWorkspaceApi;
@@ -73,6 +77,7 @@ export const workspaceIpcChannels = Object.freeze({
 });
 
 export const parseAgentPrompt = (input: unknown): string => {
+
     if (typeof input !== "string") {
         throw new TypeError("Agent prompt must be a string");
     }
@@ -90,5 +95,6 @@ export const parseAgentPrompt = (input: unknown): string => {
 
 export const formatRuntimeSummary = (runtime: DesktopRuntime): string =>
 {
+
     return `Electron ${runtime.electron} · ${runtime.platform}`;
 };

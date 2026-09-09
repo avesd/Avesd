@@ -24,8 +24,11 @@ export const createDashboardPlugin = (
     dataSources: DataSourceService,
     widgetServices: WidgetServiceFactory,
 ): PluginDefinition => {
+
     const DashboardWorkbench = () => {
+
         const state = useSyncExternalStore(navigation.subscribe, navigation.getSnapshot);
+
         return <DashboardShell
             key={`${state.scope.workspaceId}/${state.scope.dashboardId}`}
             widgetServices={widgetServices}
@@ -37,13 +40,16 @@ export const createDashboardPlugin = (
     };
     const dashboardView: WorkbenchView = {
         render: () => {
+
             return <DashboardWorkbench />;
         },
     };
 
     return {
         activate(context) {
+
             context.effect(() => {
+
                 return context.contributions.contribute(
                     mainViewContribution,
                     dashboardView,

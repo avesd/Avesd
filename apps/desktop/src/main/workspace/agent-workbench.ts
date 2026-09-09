@@ -24,6 +24,7 @@ import { DashboardLayoutCoordinator, navigateWorkspace, PersistentWorkspaceRepos
 import { randomUUID } from "node:crypto";
 
 const result = (value: unknown, image?: string): AgentToolResult => {
+
     return {
         content: [
             {
@@ -56,23 +57,66 @@ export class AgentWorkbench {
         }, private readonly storage?: PluginStorage, private readonly resources?: SharedResources,
     ) {}
 
-    configure(context: AgentWorkbenchContext): void { this.#context = context; }
+    configure(context: AgentWorkbenchContext): void {
+
+        this.#context = context;
+    }
+
+    async authorizeAgentWidget(instanceId: string): Promise<{
+        widgetId: string;
+        pluginId: string;
+        workspaceId: string;
+        dashboardId: string;
+    }> {
+
+        return this.#serial(async () => {
+
+            const snapshot = await this.file.load();
+            const widget = snapshot?.widgets.find(item => {
+
+                return item.id === instanceId && sameDashboard(item, snapshot.selection);
+            });
+            if (!widget) {
+                throw new Error("Agent caller is no longer active.");
+            }
+            const definition = widget.pluginId.startsWith("avesd.local.")
+                ? localWidgetDefinition((await this.plugins.installed(widget.pluginId)).manifest)
+                : this.#context?.widgetDefinitions.find(item => {
+
+                    return item.pluginId === widget.pluginId && item.widgetTypeId === widget.widgetTypeId;
+                });
+            if (!definition?.capabilities?.includes("agent")) {
+                throw new Error("Widget agent capability was not declared.");
+            }
+
+            return {
+                widgetId: widget.id,
+                pluginId: widget.pluginId,
+                workspaceId: widget.workspaceId,
+                dashboardId: widget.dashboardId,
+            };
+        });
+    }
 
     async agentContext(): Promise<{
         readonly dashboardName: string;
         readonly workspaceName: string;
     }> {
+
         const snapshot = await this.file.load();
         const selection = snapshot?.selection;
         const workspace = snapshot?.workspaces.find(({ id }) => {
+
             return id === selection?.workspaceId;
         });
         const dashboard = snapshot?.dashboards.find(({ id }) => {
+
             return id === selection?.dashboardId;
         });
         if (!workspace || !dashboard) {
             throw new Error("The active Avesd workspace is unavailable.");
         }
+
         return {
             dashboardName: dashboard.name,
             workspaceName: workspace.name,
@@ -82,7 +126,9 @@ export class AgentWorkbench {
     save(snapshot: WorkspaceSnapshot, expected?: {
         snapshot: WorkspaceSnapshot | undefined;
     }): Promise<void> {
+
         return this.#serial(async () => {
+
             const current = await this.file.load();
             if (!sameDashboard(snapshot.selection, current?.selection)) {
                 throw new Error("Use workspace navigation to change dashboards.");
@@ -93,13 +139,17 @@ export class AgentWorkbench {
     }
 
     navigate(command: WorkspaceNavigationCommand): Promise<WorkspaceNavigationState> {
+
         return this.#serial(async () => {
+
             return this.#navigate(await this.file.load(), command);
         });
     }
 
     widgetWorkspace(request: WidgetWorkspaceRequest, authorize: (snapshot: WorkspaceSnapshot) => void | Promise<void>, storageOperation?: () => Promise<WidgetWorkspaceResult>): Promise<WidgetWorkspaceResult> {
+
         return this.#serial(async () => {
+
             const snapshot = await this.file.load();
             if (!snapshot) {
                 throw new Error("Workspace is unavailable.");
@@ -110,6 +160,7 @@ export class AgentWorkbench {
                 if (!storageOperation) {
                     throw new Error("Plugin storage is unavailable.");
                 }
+
                 return storageOperation();
             }
             if (request.type !== "command") {
@@ -120,15 +171,20 @@ export class AgentWorkbench {
     }
 
     invokeWidget(instanceId: WidgetInstanceId, request: WidgetWorkspaceRequest, isActive: () => boolean = () => {
+
         return true;
     }): Promise<WidgetWorkspaceResult> {
+
         const epoch = this.#scopeEpoch;
         let identity: {
             workspaceId: string;
             pluginId: string;
         } | undefined;
+
         return this.widgetWorkspace(request, async (snapshot) => {
+
             const widget = snapshot.widgets.find(({ id }) => {
+
                 return id === instanceId;
             });
             if (!widget || !sameDashboard(widget, snapshot.selection) || epoch !== this.#scopeEpoch || !isActive()) {
@@ -137,6 +193,7 @@ export class AgentWorkbench {
             const definition = widget.pluginId.startsWith("avesd.local.")
                 ? localWidgetDefinition((await this.plugins.installed(widget.pluginId)).manifest)
                 : this.#context?.widgetDefinitions.find((item) => {
+
                     return item.pluginId === widget.pluginId && item.widgetTypeId === widget.widgetTypeId;
                 });
             if (!definition?.capabilities?.includes(requiredWorkspaceCapability(request))) {
@@ -154,24 +211,30 @@ export class AgentWorkbench {
                 pluginId: widget.pluginId,
             };
         }, async () => {
+
             if (identity && request.type === "resources") {
                 if (!this.resources) {
                     throw new Error("Resource directory is unavailable.");
                 }
+
                 return this.resources.invoke(identity, request, () => {
+
                     return epoch === this.#scopeEpoch && isActive();
                 });
             }
             if (!identity || !this.storage || (request.type !== "files" && request.type !== "sqlite")) {
                 throw new Error("Plugin storage is unavailable.");
             }
+
             return this.storage.invoke(identity, request, () => {
+
                 return epoch === this.#scopeEpoch && isActive();
             });
         });
     }
 
     async #navigate(current: WorkspaceSnapshot | undefined, command: WorkspaceNavigationCommand): Promise<WorkspaceNavigationState> {
+
         const { snapshot, state } = await navigateWorkspace(current, command, randomUUID);
         const changed = JSON.stringify(snapshot) !== JSON.stringify(current);
         if (changed) {
@@ -185,10 +248,16 @@ export class AgentWorkbench {
         if (changed) {
             this.workspaceChanged();
         }
+
         return state;
     }
 
-    async invoke(name: string, input: unknown): Promise<AgentToolResult> {
+    async invoke(name: string, input: unknown, expectedScope?: DashboardScope): Promise<AgentToolResult> {
+
+        if (expectedScope && !sameDashboard(expectedScope, this.#scope)) {
+            throw new Error("Return to this session's dashboard before using workspace tools.");
+        }
+
         if (!Object.hasOwn(agentToolDefinitions, name)) {
             throw new Error("Unknown Avesd tool.");
         }
@@ -199,11 +268,14 @@ export class AgentWorkbench {
         }
         if (name === "avesd_test_plugin" || name === "avesd_preview_widget") {
             const { draftId, revision } = definitions.avesd_test_plugin.schema.parse(parsed);
+
             return this.#execute(name, draftId, revision);
         }
         const scopeEpoch = this.#scopeEpoch;
+
         return this.#serial(async () => {
-            if (scopeEpoch !== this.#scopeEpoch) {
+
+            if (scopeEpoch !== this.#scopeEpoch || (expectedScope && !sameDashboard(expectedScope, this.#scope))) {
                 throw new Error("The active dashboard changed. Retry in the current dashboard.");
             }
             if (name === "avesd_list_resources" || name === "avesd_set_resource_access") {
@@ -219,6 +291,7 @@ export class AgentWorkbench {
                     const definition = command.pluginId.startsWith("avesd.local.")
                         ? localWidgetDefinition((await this.plugins.installed(command.pluginId)).manifest)
                         : this.#context?.widgetDefinitions.find(widget => {
+
                             return widget.pluginId === command.pluginId && widget.capabilities?.includes("resources");
                         });
                     if (!definition?.capabilities?.includes("resources")) {
@@ -226,6 +299,7 @@ export class AgentWorkbench {
                     }
                 }
                 await this.resources.grant(workspaceId, command.resourceId, command.pluginId, command.access);
+
                 return result({
                     resourceId: command.resourceId,
                     pluginId: command.pluginId,
@@ -238,6 +312,7 @@ export class AgentWorkbench {
                 if (!snapshot || request.type === "command" || request.type === "files" || request.type === "sqlite" || request.type === "resources") {
                     throw new Error("Workspace is unavailable.");
                 }
+
                 return result(readWorkspaceCatalog(snapshot, request));
             }
             if (name === "avesd_manage_workspace") {
@@ -249,6 +324,7 @@ export class AgentWorkbench {
                         dashboardId: command.dashboardId,
                     },
                 }));
+
                 return result({ scope: state.scope });
             }
             if (name === "avesd_create_plugin_draft") {
@@ -256,16 +332,19 @@ export class AgentWorkbench {
             }
             if (name === "avesd_read_plugin_draft") {
                 const command = definitions.avesd_read_plugin_draft.schema.parse(parsed);
+
                 return result(await this.plugins.read(command.draftId));
             }
             if (name === "avesd_write_plugin_draft") {
                 const { draftId, expectedRevision, ...content } = definitions.avesd_write_plugin_draft.schema.parse(parsed);
+
                 return result(await this.plugins.write(draftId, expectedRevision, content));
             }
             if (name === "avesd_activate_plugin") {
                 const { draftId, revision } = definitions.avesd_activate_plugin.schema.parse(parsed);
                 const installed = await this.plugins.activate(draftId, revision);
                 this.pluginsChanged();
+
                 return result(installed);
             }
             const context = this.#context;
@@ -275,24 +354,30 @@ export class AgentWorkbench {
             }
             const repository = await PersistentWorkspaceRepository.open({
                 load: () => {
+
                     return this.file.load();
                 },
                 save: (snapshot) => {
+
                     return this.file.save(snapshot);
                 },
             });
             const widgetDefinitions = [
                 ...context.widgetDefinitions.filter((widget) => {
+
                     return !widget.pluginId.startsWith("avesd.local.");
                 }),
                 ...(await this.plugins.list()).map(({ manifest }) => {
+
                     return localWidgetDefinition(manifest);
                 }),
             ];
             const layouts = new DashboardLayoutCoordinator(
                 repository,
                 (pluginId, type) => {
+
                     return widgetDefinitions.find((widget) => {
+
                         return widget.pluginId === pluginId && widget.widgetTypeId === type;
                     });
                 },
@@ -300,18 +385,22 @@ export class AgentWorkbench {
             const data = new WorkspaceDataCoordinator(
                 repository,
                 (pluginId, type) => {
+
                     return context.dataSourceDefinitions.find((source) => {
+
                         return source.pluginId === pluginId && source.sourceTypeId === type;
                     });
                 },
             );
             const apply = async (operation: DashboardLayoutOperation) => {
+
                 const current = await layouts.inspect(scope);
                 const updated = await layouts.apply(scope, {
                     expectedRevision: current.revision,
                     operations: [operation],
                 });
                 this.workspaceChanged();
+
                 return result(updated);
             };
             switch (name) {
@@ -328,6 +417,7 @@ export class AgentWorkbench {
                 });
                 case "avesd_move_widget": {
                     const command = definitions.avesd_move_widget.schema.parse(parsed);
+
                     return apply({
                         ...command,
                         id: command.id as WidgetInstanceId,
@@ -336,6 +426,7 @@ export class AgentWorkbench {
                 }
                 case "avesd_resize_widget": {
                     const command = definitions.avesd_resize_widget.schema.parse(parsed);
+
                     return apply({
                         ...command,
                         id: command.id as WidgetInstanceId,
@@ -348,6 +439,7 @@ export class AgentWorkbench {
                 });
                 case "avesd_bind_widget_input": {
                     const command = definitions.avesd_bind_widget_input.schema.parse(parsed);
+
                     return apply({
                         type: "bind",
                         id: command.widgetId as WidgetInstanceId,
@@ -374,12 +466,14 @@ export class AgentWorkbench {
                         },
                     );
                     this.workspaceChanged();
+
                     return result(created);
                 }
                 case "avesd_update_data_source": {
                     const command = definitions.avesd_update_data_source.schema.parse(parsed);
                     const id = command.dataSourceId as DataSourceId;
                     const source = (await data.list(scope)).find((source) => {
+
                         return source.id === id;
                     });
                     if (!source) {
@@ -387,6 +481,7 @@ export class AgentWorkbench {
                     }
                     const updated = await data.update(scope, id, source.revision, command.value as JsonValue);
                     this.workspaceChanged();
+
                     return result(updated);
                 }
                 default: throw new Error("Unknown Avesd tool.");
@@ -396,19 +491,26 @@ export class AgentWorkbench {
 
     // Keep native runner jobs bounded without holding up workspace or draft writes.
     #execute(name: "avesd_test_plugin" | "avesd_preview_widget", draftId: string, revision: string): Promise<AgentToolResult> {
+
         const work = this.#executionQueue.then(async () => {
+
             const readCurrent = async () => {
+
                 const draft = await this.plugins.read(draftId);
                 if (draft.revision !== revision) {
                     throw new Error("Draft changed; read its current revision first.");
                 }
+
                 return draft;
             };
             const draft = await this.#serial(readCurrent);
             if (name === "avesd_preview_widget") {
                 const image = await this.runner.preview(draft);
+
                 return this.#serial(async () => {
+
                     await readCurrent();
+
                     return result({
                         draftId,
                         revision,
@@ -416,26 +518,34 @@ export class AgentWorkbench {
                 });
             }
             const { report, image } = await this.runner.test(draft);
+
             return this.#serial(async () => {
+
                 await readCurrent();
                 if (report.draftId !== draftId || report.revision !== revision) {
                     throw new Error("Test report does not match the requested draft revision.");
                 }
                 this.plugins.record(report);
+
                 return result(report, image);
             });
         });
         this.#executionQueue = work.catch(() => {
+
             return undefined;
         });
+
         return work;
     }
 
     #serial<T>(operation: () => Promise<T>): Promise<T> {
+
         const work = this.#queue.then(operation);
         this.#queue = work.catch(() => {
+
             return undefined;
         });
+
         return work;
     }
 }

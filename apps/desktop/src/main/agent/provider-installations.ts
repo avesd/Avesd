@@ -35,14 +35,18 @@ export const providerDefinitions = [
     },
 ] as const;
 export function parseProviderId(input: unknown): AgentProviderId {
+
     if (!providerDefinitions.some(provider => {
+
         return provider.id === input;
     })) {
         throw new Error("Unknown agent provider.");
     }
+
     return input as AgentProviderId;
 }
 function parseConfiguration(input: unknown): AgentProviderConfiguration {
+
     if (!input || typeof input !== "object") {
         throw new Error("Invalid provider configuration.");
     }
@@ -54,6 +58,7 @@ function parseConfiguration(input: unknown): AgentProviderConfiguration {
     if (executablePath.length > 4096 || /[\0\r\n]/.test(executablePath) || (executablePath && !isAbsolute(executablePath))) {
         throw new Error("Use an absolute executable path, or leave it empty for automatic detection.");
     }
+
     return {
         enabled: value.enabled,
         executablePath,
@@ -68,6 +73,7 @@ export class ProviderInstallations {
     constructor(private readonly path: string, private readonly probe = probeCli) {}
 
     static async open(path: string): Promise<ProviderInstallations> {
+
         const manager = new ProviderInstallations(path);
         try {
             const data = JSON.parse(await readFile(path, "utf8")) as unknown;
@@ -83,11 +89,14 @@ export class ProviderInstallations {
                 throw error;
             }
         }
+
         return manager;
     }
 
     list(): readonly AgentProviderInstallation[] {
+
         return providerDefinitions.map(({ id, name, loginCommand }) => {
+
             return {
                 id,
                 name,
@@ -101,11 +110,13 @@ export class ProviderInstallations {
         });
     }
     refresh(): Promise<void> {
+
         if (this.running) {
             return this.running;
         }
         const configurations = new Map(this.configurations);
         const running = Promise.all(providerDefinitions.map(async definition => {
+
             const result = await this.probe(definition.command, configurations.get(definition.id)?.executablePath ?? "");
             if (configurations.get(definition.id) === this.configurations.get(definition.id)) {
                 this.probes.set(definition.id, result);
@@ -113,18 +124,22 @@ export class ProviderInstallations {
         })).then(() => {
         })
             .finally(() => {
+
                 if (this.running === running) {
                     this.running = undefined;
                 }
             });
         this.running = running;
+
         return running;
     }
     configure(id: unknown, input: unknown): Promise<void> {
+
         const providerId = parseProviderId(id);
         const configuration = parseConfiguration(input);
         const save = this.saving.catch(() => {
         }).then(async () => {
+
             const next = new Map(this.configurations); next.set(providerId, configuration);
             const temporary = `${this.path}.${randomUUID()}.tmp`;
             try {
@@ -140,11 +155,14 @@ export class ProviderInstallations {
             await this.refresh();
         });
         this.saving = save;
+
         return save;
     }
     async executable(id: AgentProviderId): Promise<string> {
+
         await this.refresh();
         const provider = this.list().find(item => {
+
             return item.id === id;
         })!;
         if (!provider.enabled) {
@@ -153,6 +171,7 @@ export class ProviderInstallations {
         if (provider.status !== "installed" || !provider.resolvedPath) {
             throw new Error(`${provider.name} is unavailable. Check Settings → Agents.`);
         }
+
         return provider.resolvedPath;
     }
 }

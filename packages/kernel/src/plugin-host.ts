@@ -26,15 +26,18 @@ export class PluginHost {
         readonly capabilities?: CapabilityBroker;
         readonly contributions?: ContributionBroker;
     } = {}) {
+
         this.#capabilities = options.capabilities ?? new CapabilityBroker();
         this.#contributions = options.contributions ?? new ContributionBroker();
     }
 
     get activePluginIds(): readonly string[] {
+
         return [...this.#plugins.keys()];
     }
 
     async replace(definition: PluginDefinition): Promise<void> {
+
         // The runtime boundary remains defensive even though the TypeScript contract is version 1.
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (definition.apiVersion !== 1) {
@@ -42,13 +45,17 @@ export class PluginHost {
         }
 
         const candidate = this.#context.plugin((context) => {
+
             const pluginContext: PluginContext = {
                 contributions: this.#contributions.createScope(definition.id),
                 effect(setup) {
+
                     context.effect(setup, `${definition.id}:effect`);
                 },
                 onDispose(dispose) {
+
                     context.effect(() => {
+
                         return dispose;
                     }, `${definition.id}:dispose`);
                 },
@@ -78,6 +85,7 @@ export class PluginHost {
     }
 
     async remove(pluginId: string): Promise<void> {
+
         const plugin = this.#plugins.get(pluginId);
         if (!plugin) {
             return;
@@ -88,6 +96,7 @@ export class PluginHost {
     }
 
     async dispose(): Promise<void> {
+
         this.#plugins.clear();
         await this.#context.fiber.dispose();
     }

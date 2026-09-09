@@ -15,6 +15,7 @@ export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonEle
 }
 
 export function IconButton({ className, children, size = "medium", type = "button", ...props }: IconButtonProps) {
+
     return <button
         className={cn("avesd-icon-button", `is-${size}`, className)}
         type={type}

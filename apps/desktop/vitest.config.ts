@@ -14,9 +14,16 @@ export default createVitestConfig({
             {
                 test: {
                     environment: "node",
-                    exclude: ["src/**/*.browser.test.{ts,tsx}"],
-                    include: ["src/**/*.test.{ts,tsx}"],
+                    exclude: ["test/**/*.browser.test.{ts,tsx}"],
+                    include: ["test/unit/**/*.test.{ts,tsx}"],
                     name: "unit",
+                },
+            },
+            {
+                test: {
+                    environment: "node",
+                    include: ["test/integration/**/*.test.{ts,tsx}"],
+                    name: "integration",
                 },
             },
             {
@@ -27,7 +34,7 @@ export default createVitestConfig({
                         instances: [{ browser: "chromium" }],
                         provider: playwright(),
                     },
-                    include: ["src/**/*.browser.test.{ts,tsx}"],
+                    include: ["test/unit/**/*.browser.test.{ts,tsx}"],
                     name: "browser",
                 },
             },

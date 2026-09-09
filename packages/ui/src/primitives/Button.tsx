@@ -15,6 +15,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export function Button({ className, children, leading, size = "medium", type = "button", variant = "secondary", ...props }: ButtonProps) {
+
     return <button
         className={cn("avesd-button", `is-${variant}`, `is-${size}`, className)}
         type={type}

@@ -53,6 +53,7 @@ const counterWidget: WidgetContribution = {
         },
     ],
     mount(root, context) {
+
         const style = document.createElement("style");
         style.textContent = `
       :host { display: block; height: 100%; }
@@ -76,6 +77,7 @@ const counterWidget: WidgetContribution = {
 
         let disposed = false;
         const renderValue = async () => {
+
             const values = await context.data.read("count");
             if (disposed) {
                 return;
@@ -85,10 +87,13 @@ const counterWidget: WidgetContribution = {
             increment.disabled = typeof current !== "number";
         };
         const unsubscribe = context.data.subscribe("count", () => {
+
             return void renderValue();
         });
         increment.addEventListener("click", () => {
+
             void context.data.read("count").then(([current]) => {
+
                 if (typeof current === "number") {
                     return context.data.update("count", current + 1);
                 }
@@ -97,11 +102,13 @@ const counterWidget: WidgetContribution = {
 
         return {
             dispose() {
+
                 disposed = true;
                 void unsubscribe();
                 root.replaceChildren();
             },
             update(state) {
+
                 label.textContent = typeof state.configuration.label === "string"
                     ? state.configuration.label
                     : "Count";
@@ -133,10 +140,13 @@ const counterWidget: WidgetContribution = {
 
 export const counterPlugin: PluginDefinition = {
     activate(context) {
+
         context.effect(() => {
+
             return context.contributions.contribute(dataSourceContribution, counterSource);
         });
         context.effect(() => {
+
             return context.contributions.contribute(
                 dashboardWidgetContribution,
                 counterWidget,

@@ -37,6 +37,13 @@ export interface AgentSettings {
 
 export type AgentEvent =
   | {
+      readonly type: "userMessage";
+      readonly text: string;
+  }
+  | {
+      readonly type: "turnStarted";
+  }
+  | {
       readonly type: "thoughtChunk";
       readonly text: string;
   }

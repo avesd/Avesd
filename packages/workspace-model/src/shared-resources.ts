@@ -66,17 +66,21 @@ export interface ResourceRecord extends Omit<SharedResource, "access"> {
     }[];
 }
 export function resourceAccess(resource: ResourceRecord, caller: ResourceIdentity): ResourceAccess | "none" {
+
     if (resource.workspaceId !== caller.workspaceId) {
         return "none";
     }
     if (resource.publisherPluginId === caller.pluginId) {
         return "read-write";
     }
+
     return resource.grants.find(grant => {
+
         return grant.pluginId === caller.pluginId;
     })?.access ?? "none";
 }
 export function describeResource(resource: ResourceRecord, caller: ResourceIdentity): SharedResource {
+
     return {
         id: resource.id,
         key: resource.key,

@@ -9,8 +9,10 @@ import type { WidgetWorkspaceTransport } from "../workspace/widget-workspace";
 import type { PluginResourceService, SharedResource, SqlMutationResult, SqlValue } from "@avesd/workspace-model";
 
 export function createResourceServices(transport: WidgetWorkspaceTransport): PluginResourceService {
+
     return {
         publish: publication => {
+
             return transport.invoke({
                 type: "resources",
                 operation: "publish",
@@ -18,6 +20,7 @@ export function createResourceServices(transport: WidgetWorkspaceTransport): Plu
             }) as Promise<SharedResource>;
         },
         unpublish: async resourceId => {
+
             await transport.invoke({
                 type: "resources",
                 operation: "unpublish",
@@ -25,6 +28,7 @@ export function createResourceServices(transport: WidgetWorkspaceTransport): Plu
             });
         },
         list: (query = {}) => {
+
             return transport.invoke({
                 type: "resources",
                 operation: "list",
@@ -33,6 +37,7 @@ export function createResourceServices(transport: WidgetWorkspaceTransport): Plu
         },
         subscribe: transport.subscribe,
         async openFile(resourceId) {
+
             await transport.invoke({
                 type: "resources",
                 operation: "open",
@@ -40,6 +45,7 @@ export function createResourceServices(transport: WidgetWorkspaceTransport): Plu
                 kind: "file",
             });
             const read = () => {
+
                 return transport.invoke({
                     type: "resources",
                     operation: "access",
@@ -50,12 +56,15 @@ export function createResourceServices(transport: WidgetWorkspaceTransport): Plu
                     },
                 }) as Promise<Uint8Array>;
             };
+
             return {
                 read,
                 readText: async () => {
+
                     return new TextDecoder().decode(await read());
                 },
                 write: async value => {
+
                     await transport.invoke({
                         type: "resources",
                         operation: "access",
@@ -70,14 +79,17 @@ export function createResourceServices(transport: WidgetWorkspaceTransport): Plu
             };
         },
         async openDatabase(resourceId) {
+
             await transport.invoke({
                 type: "resources",
                 operation: "open",
                 resourceId,
                 kind: "sqlite",
             });
+
             return {
                 query: (sql, parameters = []) => {
+
                     return transport.invoke({
                         type: "resources",
                         operation: "access",
@@ -93,6 +105,7 @@ export function createResourceServices(transport: WidgetWorkspaceTransport): Plu
                     }) as Promise<readonly Readonly<Record<string, SqlValue>>[]>;
                 },
                 execute: (sql, parameters = []) => {
+
                     return transport.invoke({
                         type: "resources",
                         operation: "access",
@@ -108,6 +121,7 @@ export function createResourceServices(transport: WidgetWorkspaceTransport): Plu
                     }) as Promise<SqlMutationResult>;
                 },
                 transaction: statements => {
+
                     return transport.invoke({
                         type: "resources",
                         operation: "access",

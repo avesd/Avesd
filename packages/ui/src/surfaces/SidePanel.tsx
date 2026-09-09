@@ -13,6 +13,7 @@ export interface SidePanelProps extends HTMLAttributes<HTMLElement> {
 }
 
 export function SidePanel({ className, children, ...props }: SidePanelProps) {
+
     return <section
         className={cn("avesd-side-panel", className)}
         role="dialog"
@@ -30,6 +31,7 @@ export type PanelHeaderProps = Omit<HTMLAttributes<HTMLElement>, "title"> & {
 };
 
 export function PanelHeader({ actions, className, leading, title, titleRef, ...props }: PanelHeaderProps) {
+
     return <header
         className={cn("avesd-panel-header", className)}
         {...props}

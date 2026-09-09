@@ -5,11 +5,24 @@
  * @description Local Plugin Contract
  */
 
+import { parseWebUrl } from "../../shared/browser/web-surface";
 import * as z from "zod";
 
 export const draftIdSchema = z.uuid();
 export const revisionSchema = z.string().regex(/^[a-f0-9]{64}$/);
 export const localManifestSchema = z.strictObject({
+    browser: z.strictObject({
+        origins: z.array(z.string().max(4096)
+            .refine(value => {
+
+                try { return parseWebUrl(value).origin === value; } catch { return false; }
+            }, "Use an HTTPS origin or loopback HTTP origin.")).min(1)
+            .max(16),
+        session: z.strictObject({
+            name: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+            shared: z.boolean(),
+        }).optional(),
+    }).optional(),
     capabilities: z.array(z.enum([
         "catalog",
         "navigation",
@@ -17,7 +30,8 @@ export const localManifestSchema = z.strictObject({
         "files",
         "sqlite",
         "resources",
-    ])).max(6)
+        "agent",
+    ])).max(7)
         .optional(),
     apiVersion: z.literal(1),
     id: z.string().regex(/^avesd\.local\.[a-z][a-z0-9-]{0,63}$/),
@@ -56,7 +70,9 @@ export const widgetTestsSchema = z.array(z.discriminatedUnion("type", [
 ])).min(1)
     .max(32)
     .refine((steps) => {
+
         return steps.some((step) => {
+
             return step.type === "expectText";
         });
     }, "Include a text assertion.");
@@ -65,6 +81,7 @@ export const draftContentSchema = z.strictObject({
     source: z.string().min(1)
         .max(65_536)
         .refine((source) => {
+
             return Buffer.byteLength(source, "utf8") <= 65_536;
         }, "Source exceeds 64 KiB."),
     tests: widgetTestsSchema,
@@ -114,11 +131,22 @@ export const counterExample = {
 };
 
 export const localPluginSdk = {
-    format: "A single JavaScript ES module exporting mount(root: ShadowRoot, context: { signal: AbortSignal, instanceId, workspaceId, dashboardId, catalog?, navigation?, management?, files?, sqlite?, resources? }). Return synchronous update({configuration, size}) and dispose() methods.",
+    format: "A single JavaScript ES module exporting mount(root: ShadowRoot, context: { signal: AbortSignal, instanceId, workspaceId, dashboardId, catalog?, navigation?, management?, files?, sqlite?, resources?, browser?, agent? }). Return synchronous update({configuration, size}) and dispose() methods.",
     lifecycle: "The host calls mount, then update with empty configuration and grid size. Unstored state is in memory. Private files and SQLite persist per workspace and plugin. Destroying a widget aborts signal and disposes its isolated browser.",
-    limits: "No imports of packages, network, direct filesystem access, Node, Electron, general host APIs, or data-source bindings. Only declared catalog/navigation/management/files/sqlite/resources services are available. Bundle-free JavaScript and inline CSS only. Source is at most 64 KiB; 1–32 test steps. Tests select within the root ShadowRoot.",
+    limits: "No imports of packages, network, direct filesystem access, Node, Electron, general host APIs, or data-source bindings. Only declared catalog/navigation/management/files/sqlite/resources/agent services and manifest.browser are available. Browser pages use a separate host-managed sandbox; the plugin itself still has no network access. Bundle-free JavaScript and inline CSS only. Source is at most 64 KiB; 1–32 test steps. Tests select within the root ShadowRoot.",
+    browser: {
+        declaration: 'Optional manifest.browser: {origins:["https://example.com"],session?:{name:"work",shared:false}}. Origins are exact, up to 16 HTTPS origins (loopback HTTP allowed). Default session is private to workspace+plugin; shared:true joins a named workspace session after native user approval, remembered until app exit. Session data persists locally across page closure and restart.',
+        methods: "context.browser.navigate(url) creates one hidden page per widget and navigates to a declared origin. extract({name:selector}) reads bounded text, click(selector) sends a DOM click; both require the current page to be on a declared origin. No arbitrary scripts, cookies, filesystem or host API access. show() opens the same page in a visible browser window; hide() returns it to background; close() destroys the page, retaining its session; status() returns {status,url}; foreign origins report interaction-required with a null URL, and unopened pages return null. Handle rejected operations and stop on abort.",
+        authentication: "Call show() when human login, CAPTCHA, native input or passkey interaction is needed. Hidden cross-origin navigations/redirects reveal the page automatically. One sandboxed login popup per page shares its session and opener; nested popups and privileged schemes are denied. Closing the presentation returns the same page to background. Same-origin login detection is plugin-owned; there is no generic reliable detector. macOS platform passkeys require signed, provisioned application/domain associations and do not work for arbitrary websites merely by enabling the API.",
+        preview: "Draft previews expose the browser facade but browser operations are unavailable: they never browse with real persistent sessions. Declarative preview tests should verify the widget UI and handle unavailable browser operations. Native browser behavior is exercised after activation against synthetic test sites.",
+    },
+    agent: {
+        declaration: 'Declare manifest capabilities:["agent"] to use context.agent. Widgets choose only flagship, reasoning or action; provider, model and effort are configured by the user in Settings.',
+        methods: "await context.agent.start({tier,prompt}) returns {id} immediately. read(id) returns {id,tier,status,answer}; cancel(id) permanently stops that task. Status is idle/running/completed/error/stopped. Read and cancel are restricted to the originating widget and workspace. Handle unavailable services and stop polling on abort. Preview operations are unavailable and never launch agents.",
+        lifecycle: "Tasks appear under Sessions > Background and continue when their widget or panel closes. History lasts until app quit; store needed results explicitly. Maximum 32 sessions and 8 concurrent prompts. Tasks retain their original dashboard; workspace tools require that dashboard to be active and the originating widget to remain authorized. The agent capability delegates the host agent toolset in that scope.",
+    },
     workspaceServices: {
-        declaration: 'Optional manifest capabilities: ["catalog", "navigation", "management", "files", "sqlite", "resources"]. Declare only the services your widget needs. The host checks every call against the installed manifest and the live widget instance.',
+        declaration: 'Optional manifest capabilities: ["catalog", "navigation", "management", "files", "sqlite", "resources", "agent"]. Declare only the services your widget needs. The host checks every call against the installed manifest and the live widget instance.',
         catalog: "context.catalog.listWorkspaces() returns {id,name}[]; listDashboards(workspaceId) returns {id,name,workspaceId}[]. Queries do not switch. subscribe(listener) invalidates metadata; requery when notified. No layouts, configurations, or source values are returned.",
         navigation: "context.navigation.getCurrent() returns {workspaceId,dashboardId}; select(scope) switches. subscribe(listener) signals invalidation. context.workspaceId/dashboardId remain the immutable mounting identity. Switching disposes live widgets; handle pending rejections and stop work when signal is aborted.",
         management: "context.management.execute(command). Dashboard commands: {type:'create',workspaceId,name}, {type:'rename',scope,name}, {type:'delete',scope}. Workspace commands: {type:'createWorkspace',name}, {type:'renameWorkspace',workspaceId,name}, {type:'deleteWorkspace',workspaceId}. Create selects the new dashboard/workspace. Delete removes owned content; show the user the consequence before invoking it. The last workspace/dashboard is protected. Persistence completes before selection changes.",

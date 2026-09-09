@@ -25,15 +25,19 @@ const statusLabels: Record<AgentConnectionStatus, string> = {
     error: "Unavailable",
 };
 
-export const AgentDock = ({ service }: {
+export const AgentDock = ({ service, label, managed = false }: {
+    readonly label?: string;
+    readonly managed?: boolean;
     readonly service: AgentService;
 }) => {
+
     const { agentOpen: open, closeAgent } = useAgentPanel();
     const nextMessageId = useRef(0);
     const composer = useRef<HTMLTextAreaElement>(null);
     const conversation = useRef<HTMLDivElement>(null);
     const followOutput = useRef(true);
     useEffect(() => {
+
         if (open) {
             composer.current?.focus();
         }
@@ -47,16 +51,20 @@ export const AgentDock = ({ service }: {
         setChangingSettings,
     ] = useState(false);
     const providerUnavailable = settings?.providers.find(provider => {
+
         return provider.id === settings.providerId;
     })?.available === false;
     const providerName = settings?.providers.find(provider => {
+
         return provider.id === settings.providerId;
     })?.name ?? "Codex";
-    const agentName = settings?.agentName ?? providerName;
+    const agentName = label ?? settings?.agentName ?? providerName;
     const modelName = settings?.models.find(model => {
+
         return model.id === settings.modelId;
     })?.name ?? settings?.modelId;
     const effortName = settings?.efforts?.find(effort => {
+
         return effort.id === settings.effortId;
     })?.name ?? settings?.effortId ?? "Default";
     const [
@@ -85,6 +93,7 @@ export const AgentDock = ({ service }: {
     ] = useState<AgentConnectionStatus>("disconnected");
 
     useEffect(() => {
+
         const element = conversation.current;
         if (element && followOutput.current) {
             element.scrollTop = element.scrollHeight;
@@ -96,24 +105,37 @@ export const AgentDock = ({ service }: {
     ]);
 
     useEffect(() => {
+
         let active = true;
         let receivedSettings = false;
         void service.getSettings?.().then(value => {
+
             if (active && !receivedSettings) {
                 setSettings(value); setStatus(value.status);
             }
         })
             .catch(() => {
+
                 if (active) {
                     setError("Agent settings could not be loaded.");
                 }
             });
         const dispose = service.subscribe((event: AgentEvent) => {
+
+            if (event.type === "turnStarted") {
+                setBusy(true);
+
+                return;
+            }
             if (event.type === "settings") {
-                receivedSettings = true; setSettings(event.settings); setStatus(event.settings.status); return;
+                receivedSettings = true; setSettings(event.settings); setStatus(event.settings.status);
+
+                return;
             }
             if (event.type === "sessionReset") {
-                setMessages([]); setActivity(undefined); setBusy(false); setError(undefined); return;
+                setMessages([]); setActivity(undefined); setBusy(false); setError(undefined);
+
+                return;
             }
             if (event.type === "status") {
                 setStatus(event.status);
@@ -122,32 +144,38 @@ export const AgentDock = ({ service }: {
                     setBusy(false);
                     setMessages(finishTools);
                 }
+
                 return;
             }
             if (event.type === "activity") {
                 setActivity(event.title);
+
                 return;
             }
             if (event.type === "turnComplete") {
                 setActivity(undefined);
                 setBusy(false);
                 setMessages(finishTools);
+
                 return;
             }
 
             const id = nextMessageId.current++;
             setMessages(current => {
+
                 return appendAgentEvent(current, event, id);
             });
         });
 
         return () => {
+
             active = false;
             void dispose();
         };
     }, [service]);
 
     const connect = async (): Promise<void> => {
+
         if (providerUnavailable || status === "connected" || status === "connecting") {
             return;
         }
@@ -157,12 +185,14 @@ export const AgentDock = ({ service }: {
             await service.connect();
         } catch {
             setError((current) => {
+
                 return current ?? "Agent could not connect.";
             });
         }
     };
 
     const changeSettings = async (kind: "provider" | "model" | "effort", id: string) => {
+
         const currentId = kind === "provider" ? settings?.providerId : kind === "model" ? settings?.modelId : settings?.effortId;
         if (busy || changingSettings || status === "connecting" || id === currentId) {
             return;
@@ -188,6 +218,7 @@ export const AgentDock = ({ service }: {
     };
 
     const sendPrompt = async (): Promise<void> => {
+
         const text = draft.trim();
         if (!text || busy || changingSettings || status === "connecting" || (providerUnavailable && status !== "connected")) {
             return;
@@ -198,16 +229,19 @@ export const AgentDock = ({ service }: {
         setActivity(undefined);
         setBusy(true);
         followOutput.current = true;
-        setMessages((current) => {
-            return [
-                ...current,
-                {
-                    id: nextMessageId.current++,
-                    kind: "user",
-                    text,
-                },
-            ];
-        });
+        if (!managed) {
+            setMessages((current) => {
+
+                return [
+                    ...current,
+                    {
+                        id: nextMessageId.current++,
+                        kind: "user",
+                        text,
+                    },
+                ];
+            });
+        }
 
         try {
             await service.prompt(text);
@@ -215,17 +249,20 @@ export const AgentDock = ({ service }: {
             setBusy(false);
             setMessages(finishTools);
             setError((current) => {
+
                 return current ?? "Agent could not complete that request.";
             });
         }
     };
 
     const handleSubmit = (event: SyntheticEvent<HTMLFormElement>): void => {
+
         event.preventDefault();
         void sendPrompt();
     };
 
     const handleComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
+
         if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
             event.preventDefault();
             void sendPrompt();
@@ -241,6 +278,7 @@ export const AgentDock = ({ service }: {
             aria-label="Workspace agent"
             className="agent-panel"
             onKeyDown={(event) => {
+
                 if (event.key === "Escape" && !event.defaultPrevented && event.currentTarget.contains(event.target as Node)) {
                     closeAgent(); event.stopPropagation();
                 }
@@ -277,6 +315,7 @@ export const AgentDock = ({ service }: {
                     size="small"
                     disabled={providerUnavailable || status === "connecting" || changingSettings}
                     onClick={() => {
+
                         return void connect();
                     }}
                 >
@@ -286,6 +325,7 @@ export const AgentDock = ({ service }: {
                     aria-label="Close agent"
                     className="agent-icon-button"
                     onClick={() => {
+
                         return void closeAgent();
                     }}
                 >
@@ -299,6 +339,7 @@ export const AgentDock = ({ service }: {
             <div
                 ref={conversation}
                 onScroll={() => {
+
                     const element = conversation.current;
                     if (element) {
                         followOutput.current = element.scrollHeight - element.scrollTop - element.clientHeight < 64;
@@ -322,6 +363,7 @@ export const AgentDock = ({ service }: {
                         <p>Your agent can inspect and arrange this dashboard through scoped local tools.</p>
                     </div>
                 ) : messages.map((message) => {
+
                     if (message.kind === "thought") {
                         return <details
                             className="agent-trace agent-reasoning"
@@ -374,6 +416,7 @@ export const AgentDock = ({ service }: {
                             {message.input === undefined && message.output === undefined && <p>No details provided by the agent.</p>}
                         </details>;
                     }
+
                     return (
                         <div
                             className={`agent-message is-${message.kind === "user" ? "user" : "agent"}`}
@@ -420,6 +463,7 @@ export const AgentDock = ({ service }: {
                     </span>
                     {(status === "error" || status === "disconnected") && !providerUnavailable && <button
                         onClick={() => {
+
                             return void connect();
                         }}
                         type="button"
@@ -439,10 +483,11 @@ export const AgentDock = ({ service }: {
                     aria-label="Message agent"
                     disabled={status === "connecting" || changingSettings}
                     onChange={(event) => {
+
                         return void setDraft(event.target.value);
                     }}
                     onKeyDown={handleComposerKeyDown}
-                    placeholder={status === "connecting" ? `Connecting to ${providerName}…` : "Do anything…"}
+                    placeholder={status === "connecting" ? `Connecting to ${label ?? providerName}…` : "Do anything…"}
                     rows={3}
                     value={draft}
                 />
@@ -450,6 +495,7 @@ export const AgentDock = ({ service }: {
                     className="agent-composer-footer"
                 >
                     <div
+                        hidden={managed}
                         className="agent-model-controls"
                     >
                         <DropdownMenu>
@@ -496,10 +542,12 @@ export const AgentDock = ({ service }: {
                                 <DropdownMenuRadioGroup
                                     value={settings?.providerId}
                                     onValueChange={id => {
+
                                         return void changeSettings("provider", id);
                                     }}
                                 >
                                     {settings?.providers.map(provider => {
+
                                         return <DropdownMenuRadioItem
                                             key={provider.id}
                                             value={provider.id}
@@ -555,10 +603,12 @@ export const AgentDock = ({ service }: {
                                 <DropdownMenuRadioGroup
                                     value={settings?.modelId}
                                     onValueChange={id => {
+
                                         return void changeSettings("model", id);
                                     }}
                                 >
                                     {settings?.models.map(model => {
+
                                         return <DropdownMenuRadioItem
                                             key={model.id}
                                             value={model.id}
@@ -612,10 +662,12 @@ export const AgentDock = ({ service }: {
                                 <DropdownMenuRadioGroup
                                     value={settings.effortId}
                                     onValueChange={id => {
+
                                         return void changeSettings("effort", id);
                                     }}
                                 >
                                     {settings.efforts.map(effort => {
+
                                         return <DropdownMenuRadioItem
                                             key={effort.id}
                                             value={effort.id}
@@ -635,6 +687,7 @@ export const AgentDock = ({ service }: {
                             aria-label="Stop agent"
                             className="agent-send is-stop"
                             onClick={() => {
+
                                 return void service.cancel();
                             }}
                             type="button"

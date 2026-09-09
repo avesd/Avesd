@@ -23,13 +23,16 @@ export const WidgetSurface = ({
     readonly instance: WidgetInstance;
     readonly isEditing: boolean;
 }) => {
+
     const [
         preview,
         setPreview,
     ] = useState<GridPlacement>();
     const cancelGesture = useRef<(() => void) | undefined>(undefined);
     useEffect(() => {
+
         return () => {
+
             return cancelGesture.current?.();
         };
     }, [
@@ -44,6 +47,7 @@ export const WidgetSurface = ({
         : definition.sizing.policy.sizes.length > 1);
 
     const move = (x: number, y: number) => {
+
         return apply([
             {
                 id: instance.id,
@@ -54,6 +58,7 @@ export const WidgetSurface = ({
         ]);
     };
     const resize = (size: WidgetSize) => {
+
         return apply([
             {
                 id: instance.id,
@@ -64,6 +69,7 @@ export const WidgetSurface = ({
     };
 
     const beginGesture = (event: ReactPointerEvent<HTMLElement>, kind: "move" | "resize") => {
+
         if (event.button !== 0 || !isEditing) {
             return;
         }
@@ -81,6 +87,7 @@ export const WidgetSurface = ({
         const cellWidth = grid.getBoundingClientRect().width / 24;
         let next = original;
         const handleMove = (moving: PointerEvent) => {
+
             if (moving.pointerId !== event.pointerId) {
                 return;
             }
@@ -99,6 +106,7 @@ export const WidgetSurface = ({
             setPreview(next);
         };
         const cleanup = () => {
+
             window.removeEventListener("pointermove", handleMove);
             window.removeEventListener("pointerup", handleUp);
             window.removeEventListener("pointercancel", cancel);
@@ -108,14 +116,17 @@ export const WidgetSurface = ({
             setPreview(undefined);
         };
         const cancel = () => {
+
             return void cleanup();
         };
         const escape = (key: KeyboardEvent) => {
+
             if (key.key === "Escape") {
                 cancel();
             }
         };
         const handleUp = (up: PointerEvent) => {
+
             if (up.pointerId !== event.pointerId) {
                 return;
             }
@@ -169,9 +180,11 @@ export const WidgetSurface = ({
                         aria-label={`Drag ${name}`}
                         title="Drag to move. Use arrow keys when focused."
                         onPointerDown={(event) => {
+
                             return void beginGesture(event, "move");
                         }}
                         onKeyDown={(event) => {
+
                             const directions: Record<string, readonly [number, number]> = {
                                 ArrowLeft: [
                                     -1,
@@ -205,6 +218,7 @@ export const WidgetSurface = ({
                         className="widget-remove"
                         aria-label="Remove widget"
                         onClick={() => {
+
                             return void apply([
                                 {
                                     id: instance.id,
@@ -221,9 +235,11 @@ export const WidgetSurface = ({
                         aria-label={`Resize ${name}`}
                         title="Drag to resize to supported sizes. Use arrow keys when focused."
                         onPointerDown={(event) => {
+
                             return void beginGesture(event, "resize");
                         }}
                         onKeyDown={(event) => {
+
                             if (![
                                 "ArrowLeft",
                                 "ArrowRight",
@@ -238,12 +254,15 @@ export const WidgetSurface = ({
                             const growing = event.key === "ArrowRight" || event.key === "ArrowDown";
                             if (policy.kind === "fixed") {
                                 const ordered = [...policy.sizes].filter(size => {
+
                                     return size.width <= 24 - current.x;
                                 })
                                     .sort((a, b) => {
+
                                         return a.width * a.height - b.width * b.height || a.width - b.width;
                                     });
                                 const index = ordered.findIndex(size => {
+
                                     return size.width === current.width && size.height === current.height;
                                 });
                                 const next = ordered[index + (growing ? 1 : -1)];
@@ -281,15 +300,20 @@ export const WidgetSurface = ({
 };
 
 const snapSize = (definition: WidgetContribution, current: GridPlacement, width: number, height: number, cellWidth: number): WidgetSize => {
+
     const policy = definition.sizing.policy;
     if (policy.kind === "fixed") {
         const distance = (size: WidgetSize) => {
+
             return ((size.width - width) * cellWidth) ** 2 + ((size.height - height) * 24) ** 2;
         };
+
         return policy.sizes.filter(size => {
+
             return size.width <= 24 - current.x;
         }).reduce<WidgetSize>(
             (nearest, size) => {
+
                 return distance(size) < distance(nearest) ? size : nearest;
             },
             {
@@ -304,8 +328,10 @@ const snapSize = (definition: WidgetContribution, current: GridPlacement, width:
     };
     const snap = (value: number, minimum: number, maximum: number, increment: number) =>
     {
+
         return minimum + Math.max(0, Math.min(Math.floor((maximum - minimum) / increment), Math.round((value - minimum) / increment))) * increment;
     };
+
     return {
         width: snap(width, policy.minimum.width, Math.min(policy.maximum.width, 24 - current.x), step.width),
         height: snap(height, policy.minimum.height, policy.maximum.height, step.height),

@@ -944,3 +944,22 @@ button {
 .provider-setup { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .provider-setup code { font-size: 10px; color: #7c8674; overflow-wrap: anywhere; }
 .agent-installation-notice { flex-shrink: 0; margin: 0 16px 12px; font-size: 12px; line-height: 1.5; color: #856b49; }
+
+.agent-model-controls[hidden] { display: none; }
+.agent-tier-settings fieldset { margin: 12px 0; padding: 12px; border: 1px solid #d4d9cf; border-radius: 8px; }
+.agent-tier-settings label { display: grid; grid-template-columns: 75px minmax(0, 1fr); align-items: center; gap: 8px; margin: 8px 0; }
+.agent-tier-settings input, .agent-tier-settings select, .session-new select { min-width: 0; width: 100%; padding: 7px; border: 1px solid #c7cebf; border-radius: 6px; background: white; color: inherit; font: inherit; }
+.agent-tier-settings p, .session-controls p { color: #60685b; font-size: 12px; line-height: 1.5; }
+.session-controls { padding: 16px; border-bottom: 1px solid #d4d9cf; }
+.session-tabs, .session-new, .session-actions { display: flex; gap: 8px; }
+.session-tabs button[aria-pressed="true"] { background: #dfe8d7; color: #294333; }
+.session-new { margin-top: 12px; }
+.session-new select { flex: 1; width: auto; }
+.session-new > button { flex-shrink: 0; white-space: nowrap; }
+.session-list { flex: 1; overflow: auto; padding: 12px; }
+.session-row { display: flex; gap: 8px; padding: 10px; margin-bottom: 10px; border: 1px solid #d4d9cf; border-radius: 8px; }
+.session-row[data-selected="true"] { border-color: #68825d; background: #f0f5eb; }
+.session-open { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 5px; text-align: left; background: transparent; border: 0; color: inherit; cursor: pointer; overflow-wrap: anywhere; }
+.session-open span, .session-open time { font-size: 12px; color: #60685b; }
+.session-actions { align-items: center; }
+.workbench-session-error { position: fixed; z-index: 100; bottom: 20px; left: 20px; padding: 12px; background: #fff1ec; border: 1px solid #bd6351; border-radius: 8px; }

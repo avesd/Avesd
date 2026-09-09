@@ -11,13 +11,17 @@ import { dashboardWidgetContribution } from "@avesd/plugin-ui";
 
 /** This trusted adapter contributes metadata and placement; user code only runs in native sandboxed views. */
 export function createLocalPlugin(plugin: LocalPluginSummary, api: LocalPluginsApi): PluginDefinition {
+
     const { manifest } = plugin;
+
     return {
         id: manifest.id,
         apiVersion: 1,
         version: manifest.version,
         activate(context) {
+
             context.effect(() => {
+
                 return context.contributions.contribute(dashboardWidgetContribution, {
                     capabilities: manifest.capabilities,
                     widgetTypeId: manifest.widgetTypeId,
@@ -35,6 +39,7 @@ export function createLocalPlugin(plugin: LocalPluginSummary, api: LocalPluginsA
                         },
                     },
                     mount(root, mountContext) {
+
                         const style = document.createElement("style");
                         style.textContent = ":host { display:block; height:100%; } .local-widget-placeholder { box-sizing:border-box; height:100%; display:grid; place-content:center; padding:16px; color:#687564; background:#eff3ea; font:13px system-ui; text-align:center; }";
                         const viewport = document.createElement("div");
@@ -46,6 +51,7 @@ export function createLocalPlugin(plugin: LocalPluginSummary, api: LocalPluginsA
                         let frame = 0;
                         let previous = "";
                         const sync = () => {
+
                             frame = 0;
                             if (!id || disposed) {
                                 return;
@@ -72,10 +78,12 @@ export function createLocalPlugin(plugin: LocalPluginSummary, api: LocalPluginsA
                                 id,
                                 bounds,
                             }).catch(() => {
+
                                 viewport.textContent = "Local widget is unavailable.";
                             });
                         };
                         const schedule = () => {
+
                             if (!frame && !disposed) {
                                 frame = requestAnimationFrame(sync);
                             }
@@ -94,24 +102,34 @@ export function createLocalPlugin(plugin: LocalPluginSummary, api: LocalPluginsA
                             type: "create",
                             widgetId: mountContext.instanceId,
                         }).then((surface) => {
+
                             if (disposed) {
                                 void api.surface({
                                     type: "destroy",
                                     id: surface.id,
                                 }).catch(() => {
+
                                     return undefined;
-                                }); return;
+                                });
+
+                                return;
                             }
                             id = surface.id; schedule();
                         })
                             .catch(() => {
+
                                 if (!disposed) {
                                     viewport.textContent = "Local widget failed to start. Test the plugin before retrying.";
                                 }
                             });
+
                         return {
-                            update() { schedule(); },
+                            update() {
+
+                                schedule();
+                            },
                             dispose() {
+
                                 disposed = true; cancelAnimationFrame(frame); resize.disconnect(); mutation.disconnect();
                                 window.removeEventListener("resize", schedule); window.removeEventListener("scroll", schedule, true);
                                 if (id) {
@@ -119,6 +137,7 @@ export function createLocalPlugin(plugin: LocalPluginSummary, api: LocalPluginsA
                                         type: "destroy",
                                         id,
                                     }).catch(() => {
+
                                         return undefined;
                                     });
                                 }

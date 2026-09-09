@@ -18,12 +18,17 @@ export async function openAgentGateway(invoke: (name: string, input: unknown) =>
     close(): void;
     rotateToken(): void;
 }> {
+
     let token = randomBytes(32).toString("hex");
     const server = createServer((request, response) => {
+
         void (async () => {
+
             if (request.method !== "POST" || request.url !== "/invoke" || request.headers.origin
       || request.headers.authorization !== `Bearer ${token}` || request.headers["content-type"] !== "application/json") {
-                response.writeHead(403).end(); return;
+                response.writeHead(403).end();
+
+                return;
             }
             let body = "";
             request.setEncoding("utf8");
@@ -31,11 +36,15 @@ export async function openAgentGateway(invoke: (name: string, input: unknown) =>
                 for await (const chunk of request) {
                     body += String(chunk);
                     if (Buffer.byteLength(body) > 300_000) {
-                        response.writeHead(413).end(); return;
+                        response.writeHead(413).end();
+
+                        return;
                     }
                 }
                 if (request.headers.authorization !== `Bearer ${token}`) {
-                    response.writeHead(403).end(); return;
+                    response.writeHead(403).end();
+
+                    return;
                 }
                 const command = JSON.parse(body) as {
                     name?: unknown;
@@ -59,21 +68,33 @@ export async function openAgentGateway(invoke: (name: string, input: unknown) =>
                 }));
             }
         })().catch(() => {
+
             response.destroy();
         });
     });
     server.requestTimeout = 15_000;
     await new Promise<void>((resolve, reject) => {
+
         server.once("error", reject); server.listen(0, "127.0.0.1", resolve);
     });
     const address = server.address();
     if (!address || typeof address === "string") {
         throw new Error("Avesd gateway did not start.");
     }
+
     return {
         url: `http://127.0.0.1:${address.port}/invoke`,
-        get token() { return token; },
-        rotateToken() { token = randomBytes(32).toString("hex"); },
-        close() { server.closeAllConnections(); server.close(); },
+        get token() {
+
+            return token;
+        },
+        rotateToken() {
+
+            token = randomBytes(32).toString("hex");
+        },
+        close() {
+
+            server.closeAllConnections(); server.close();
+        },
     };
 }

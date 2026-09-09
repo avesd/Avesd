@@ -74,15 +74,18 @@ export interface BrowserControlsApi {
 }
 
 export function parseBrowserControls(input: unknown): BrowserControlsCommand {
+
     if (!input || typeof input !== "object") {
         throw new Error("Invalid browser control command.");
     }
     const value = input as Record<string, unknown>;
     const text = (record: Record<string, unknown>, key: string, max = 128): string => {
+
         const item = record[key];
         if (typeof item !== "string" || item.length === 0 || item.length > max) {
             throw new Error("Invalid browser control field.");
         }
+
         return item;
     };
     if (value.type === "list") {
@@ -103,10 +106,12 @@ export function parseBrowserControls(input: unknown): BrowserControlsCommand {
     if (value.type === "bind") {
         if (!Array.isArray(value.operations) || value.operations.length > 3
       || !value.operations.every((operation) => {
+
           return BROWSER_OPERATIONS.includes(operation);
       })) {
             throw new Error("Invalid browser operations.");
         }
+
         return {
             type: "bind",
             sourceId,
@@ -146,10 +151,12 @@ export function parseBrowserControls(input: unknown): BrowserControlsCommand {
             const fields = action.fields as Record<string, unknown>;
             const keys = Object.keys(fields);
             if (!keys.length || keys.length > 16 || keys.some((key) => {
+
                 return !/^[a-zA-Z][a-zA-Z0-9_]{0,63}$/.test(key);
             })) {
                 throw new Error("Use one to sixteen named fields.");
             }
+
             return {
                 type: "invoke",
                 sourceId,
@@ -157,6 +164,7 @@ export function parseBrowserControls(input: unknown): BrowserControlsCommand {
                 action: {
                     type: "extract",
                     fields: Object.fromEntries(keys.map((key) => {
+
                         return [
                             key,
                             text(fields, key, 512),

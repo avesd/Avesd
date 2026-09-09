@@ -13,6 +13,7 @@ import { join } from "node:path";
 
 type DraftContent = Pick<LocalPluginDraft, "manifest" | "source" | "tests">;
 const revisionOf = (content: DraftContent) => {
+
     return createHash("sha256").update(JSON.stringify(content))
         .digest("hex");
 };
@@ -22,6 +23,7 @@ export class LocalPluginStore {
     constructor(private readonly directory: string) {}
 
     async create(input: unknown): Promise<LocalPluginDraft> {
+
         const content = draftContentSchema.parse(input);
         const draft = {
             ...content,
@@ -29,10 +31,12 @@ export class LocalPluginStore {
             revision: revisionOf(content),
         };
         await this.#save(join("drafts", `${draft.id}.json`), draft);
+
         return draft;
     }
 
     async read(id: string): Promise<LocalPluginDraft> {
+
         draftIdSchema.parse(id);
         const stored = JSON.parse(await readFile(join(this.directory, "drafts", `${id}.json`), "utf8")) as unknown;
         const content = draftContentSchema.parse(stored && typeof stored === "object"
@@ -41,6 +45,7 @@ export class LocalPluginStore {
                 source: Reflect.get(stored, "source"),
                 tests: Reflect.get(stored, "tests"),
             } : stored);
+
         return {
             ...content,
             id,
@@ -49,6 +54,7 @@ export class LocalPluginStore {
     }
 
     async write(id: string, expectedRevision: string, input: unknown): Promise<LocalPluginDraft> {
+
         const previous = await this.read(id);
         if (previous.revision !== revisionSchema.parse(expectedRevision)) {
             throw new Error("Draft changed; read it before editing.");
@@ -64,12 +70,17 @@ export class LocalPluginStore {
         };
         await this.#save(join("drafts", `${id}.json`), draft);
         this.#reports.delete(id);
+
         return draft;
     }
 
-    record(report: PluginTestReport): void { this.#reports.set(report.draftId, report); }
+    record(report: PluginTestReport): void {
+
+        this.#reports.set(report.draftId, report);
+    }
 
     async activate(id: string, revision: string): Promise<LocalPluginSummary> {
+
         const draft = await this.read(id);
         const report = this.#reports.get(id);
         if (draft.revision !== revisionSchema.parse(revision) || report?.revision !== revision || !report.passed) {
@@ -77,6 +88,7 @@ export class LocalPluginStore {
         }
         const installed = await this.list();
         const previous = installed.find((plugin) => {
+
             return plugin.manifest.id === draft.manifest.id;
         });
         if (previous && (previous.manifest.widgetTypeId !== draft.manifest.widgetTypeId
@@ -84,6 +96,7 @@ export class LocalPluginStore {
             throw new Error("An installed widget's type and size cannot change in this version.");
         }
         await this.#save(join("installed", `${draft.manifest.id}.json`), draft);
+
         return {
             manifest: draft.manifest,
             revision: draft.revision,
@@ -91,6 +104,7 @@ export class LocalPluginStore {
     }
 
     async installed(id: string): Promise<LocalPluginDraft> {
+
         localManifestSchema.shape.id.parse(id);
         const stored = JSON.parse(await readFile(join(this.directory, "installed", `${id}.json`), "utf8")) as LocalPluginDraft;
         const content = draftContentSchema.parse({
@@ -101,6 +115,7 @@ export class LocalPluginStore {
         if (content.manifest.id !== id || revisionOf(content) !== stored.revision) {
             throw new Error("Installed plugin integrity check failed.");
         }
+
         return {
             ...content,
             id: draftIdSchema.parse(stored.id),
@@ -109,6 +124,7 @@ export class LocalPluginStore {
     }
 
     async list(): Promise<readonly LocalPluginSummary[]> {
+
         let files: string[];
         try { files = await readdir(join(this.directory, "installed")); }
         catch (error) {
@@ -117,11 +133,15 @@ export class LocalPluginStore {
             }
             throw new Error("Local plugins could not be read.", { cause: error });
         }
+
         return Promise.all(files.filter((file) => {
+
             return /^avesd\.local\.[a-z][a-z0-9-]{0,63}\.json$/.test(file);
         }).sort()
             .map(async (file) => {
+
                 const draft = await this.installed(file.slice(0, -5));
+
                 return {
                     manifest: draft.manifest,
                     revision: draft.revision,
@@ -130,6 +150,7 @@ export class LocalPluginStore {
     }
 
     async #save(relativePath: string, value: unknown): Promise<void> {
+
         const path = join(this.directory, relativePath);
         await mkdir(join(path, ".."), {
             recursive: true,

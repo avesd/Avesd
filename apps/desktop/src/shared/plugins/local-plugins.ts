@@ -5,10 +5,12 @@
  * @description Local Plugins
  */
 
+import type { PluginBrowserConfiguration } from "../browser/plugin-browser";
 import type { WebSurfaceBounds } from "../browser/web-surface";
 import type { WidgetDefinition, WidgetWorkspaceCapability } from "@avesd/workspace-model";
 
 export interface LocalPluginManifest {
+    readonly browser?: PluginBrowserConfiguration;
     readonly capabilities?: readonly WidgetWorkspaceCapability[];
     readonly apiVersion: 1;
     readonly id: string;
@@ -91,6 +93,7 @@ export const localPluginsChannels = {
 } as const;
 
 export const localWidgetDefinition = (manifest: LocalPluginManifest): WidgetDefinition => {
+
     return {
         capabilities: manifest.capabilities,
         pluginId: manifest.id,
