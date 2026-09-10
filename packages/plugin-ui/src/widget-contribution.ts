@@ -12,7 +12,6 @@ import type { DashboardId,
     JsonValue,
     WidgetInstanceId,
     WidgetSize,
-    WidgetSizePolicy,
     WidgetWorkspaceCapability,
     WidgetWorkspaceServices,
     WorkspaceId } from "@avesd/workspace-model";
@@ -78,7 +77,6 @@ export interface WidgetContribution {
     mount(root: ShadowRoot, context: WidgetMountContext): WidgetController;
     readonly sizing: {
         readonly default: WidgetSize;
-        readonly policy: WidgetSizePolicy;
     };
     readonly widgetTypeId: string;
 }

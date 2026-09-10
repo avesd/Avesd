@@ -32,7 +32,7 @@ declarative tests. The module exports `mount(root, { signal })` and returns
 `update({ configuration, size })` and `dispose()` methods. It renders into a
 ShadowRoot inside an isolated native browser. The manifest supplies an
 `avesd.local.*` plugin ID, a widget type ID, display name, semantic version, and
-fixed grid size. Source is limited to 64 KiB. Read the SDK tool for the complete
+default grid size. Source is limited to 64 KiB. Read the SDK tool for the complete
 contract and working counter example.
 
 Tools are `avesd_create_plugin_draft`, `avesd_read_plugin_draft`,
@@ -50,7 +50,9 @@ Activation requires a passing report for the exact current draft revision in
 the current desktop session. Editing invalidates the report; failed or stale
 tests cannot replace an installed version. Installed source and metadata persist
 atomically and rehydrate on restart. Existing instances retain their identity
-when code is replaced; changing an installed type ID or size is not supported.
+when code is replaced; changing an installed type ID is not supported. Changing the default size affects
+new instances only; existing instances retain their saved placement. The host
+passes the current instance grid size to `update`, including resize previews.
 
 Generated code never executes in the main process or trusted renderer. Each
 preview, test, and live widget uses its own in-memory Electron session, with

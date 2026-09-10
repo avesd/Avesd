@@ -94,23 +94,6 @@ const welcomeWidget: WidgetContribution = {
             height: 6,
             width: 12,
         },
-        policy: {
-            kind: "fixed",
-            sizes: [
-                {
-                    height: 5,
-                    width: 8,
-                },
-                {
-                    height: 6,
-                    width: 12,
-                },
-                {
-                    height: 7,
-                    width: 24,
-                },
-            ],
-        },
     },
     widgetTypeId: "welcome",
 };

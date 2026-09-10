@@ -10,20 +10,16 @@ export type {
     DashboardLayoutErrorCode,
     DashboardLayoutOperation,
     DashboardLayoutService,
-    FixedWidgetSizePolicy,
-    RangeWidgetSizePolicy,
     WidgetDefinition,
     WidgetDefinitionResolver,
     WidgetInputDefinition,
     WidgetSize,
-    WidgetSizePolicy,
 } from "./dashboard-layout";
 export {
     DASHBOARD_GRID_COLUMNS,
     DashboardLayoutCoordinator,
     DashboardLayoutError,
     findAvailablePlacement,
-    isSupportedWidgetSize,
 } from "./dashboard-layout";
 export type {
     CreateDataSourceCommand,

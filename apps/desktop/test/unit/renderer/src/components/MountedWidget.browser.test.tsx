@@ -75,15 +75,6 @@ it("initializes replacements with the existing configuration and releases the pr
                     width: 6,
                     height: 4,
                 },
-                policy: {
-                    kind: "fixed",
-                    sizes: [
-                        {
-                            width: 6,
-                            height: 4,
-                        },
-                    ],
-                },
             },
             mount(host, context) {
 
@@ -159,15 +150,6 @@ it("aborts and disposes a failing controller once while keeping a visible fallba
             default: {
                 width: 6,
                 height: 4,
-            },
-            policy: {
-                kind: "fixed",
-                sizes: [
-                    {
-                        width: 6,
-                        height: 4,
-                    },
-                ],
             },
         },
         mount(host, context) {

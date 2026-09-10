@@ -33,10 +33,6 @@ export function createLocalPlugin(plugin: LocalPluginSummary, api: LocalPluginsA
                     },
                     sizing: {
                         default: manifest.size,
-                        policy: {
-                            kind: "fixed",
-                            sizes: [manifest.size],
-                        },
                     },
                     mount(root, mountContext) {
 
@@ -50,6 +46,7 @@ export function createLocalPlugin(plugin: LocalPluginSummary, api: LocalPluginsA
                         let disposed = false;
                         let frame = 0;
                         let previous = "";
+                        let size = manifest.size;
                         const sync = () => {
 
                             frame = 0;
@@ -68,7 +65,10 @@ export function createLocalPlugin(plugin: LocalPluginSummary, api: LocalPluginsA
                                 height: rect.height,
                                 visible: !blocked && fits,
                             };
-                            const key = JSON.stringify(bounds);
+                            const key = JSON.stringify({
+                                bounds,
+                                size,
+                            });
                             if (key === previous) {
                                 return;
                             }
@@ -77,6 +77,7 @@ export function createLocalPlugin(plugin: LocalPluginSummary, api: LocalPluginsA
                                 type: "bounds",
                                 id,
                                 bounds,
+                                size,
                             }).catch(() => {
 
                                 viewport.textContent = "Local widget is unavailable.";
@@ -124,8 +125,9 @@ export function createLocalPlugin(plugin: LocalPluginSummary, api: LocalPluginsA
                             });
 
                         return {
-                            update() {
+                            update(state) {
 
+                                size = state.size;
                                 schedule();
                             },
                             dispose() {

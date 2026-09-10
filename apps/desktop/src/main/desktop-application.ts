@@ -13,6 +13,7 @@ import type { AgentWorkbenchContext } from "../shared/desktop-api";
 import { agentIpcChannels,
     parseAgentPrompt,
     workspaceIpcChannels } from "../shared/desktop-api";
+import { parseLocalWidgetCommand } from "../shared/plugins/local-plugins";
 import { localPluginsChannels } from "../shared/plugins/local-plugins";
 import { workbenchPreferencesChannels } from "../shared/workbench/preferences";
 import { parseWidgetWorkspaceRequest, widgetWorkspaceChannels } from "../shared/workspace/widget-workspace";
@@ -424,6 +425,17 @@ export function startDesktop() {
         }
 
         return workbench.save(snapshot, expected);
+    });
+
+    ipcMain.handle(browserTasksChannel, async (event, input: unknown) => {
+
+        hostForEvent(event);
+        const workspaceId = (await workspaceFile?.load())?.selection?.workspaceId;
+        if (!workspaceId || !browserTasks) {
+            throw new Error("Background browsers are unavailable.");
+        }
+
+        return browserTasks.command(workspaceId, browserTaskCommandSchema.parse(input));
     });
 
     ipcMain.handle(localPluginsChannels.list, (event) => {

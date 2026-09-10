@@ -91,9 +91,8 @@ export class LocalPluginStore {
 
             return plugin.manifest.id === draft.manifest.id;
         });
-        if (previous && (previous.manifest.widgetTypeId !== draft.manifest.widgetTypeId
-      || JSON.stringify(previous.manifest.size) !== JSON.stringify(draft.manifest.size))) {
-            throw new Error("An installed widget's type and size cannot change in this version.");
+        if (previous && previous.manifest.widgetTypeId !== draft.manifest.widgetTypeId) {
+            throw new Error("An installed widget's type cannot change in this version.");
         }
         await this.#save(join("installed", `${draft.manifest.id}.json`), draft);
 

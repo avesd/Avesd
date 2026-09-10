@@ -6,8 +6,7 @@
  */
 
 import { DashboardLayoutCoordinator,
-    findAvailablePlacement,
-    isSupportedWidgetSize } from "../../src/dashboard-layout";
+    findAvailablePlacement } from "../../src/dashboard-layout";
 import { InMemoryWorkspaceRepository } from "../../src/in-memory-workspace-repository";
 import type { DashboardId,
     DashboardScope,
@@ -36,19 +35,6 @@ const definition = {
         },
     ],
     pluginId: "example.plugin",
-    sizePolicy: {
-        kind: "fixed" as const,
-        sizes: [
-            {
-                height: 4,
-                width: 6,
-            },
-            {
-                height: 6,
-                width: 12,
-            },
-        ],
-    },
     widgetTypeId: "status",
 };
 
@@ -170,34 +156,86 @@ describe("DashboardLayoutCoordinator", () => {
         });
     });
 
-    it("enforces registered fixed and range size policies", () => {
+    it("persists arbitrary instance sizes while retaining grid boundaries", async () => {
 
-        expect(isSupportedWidgetSize(definition.sizePolicy, {
-            height: 6,
-            width: 12,
-        })).toBe(true);
-        expect(isSupportedWidgetSize(definition.sizePolicy, {
+        const { layouts, repository } = await setup();
+        const id = "resized" as WidgetInstanceId;
+        await layouts.apply(scope, {
+            expectedRevision: 0,
+            operations: [
+                {
+                    type: "add",
+                    id,
+                    pluginId: definition.pluginId,
+                    widgetTypeId: definition.widgetTypeId,
+                },
+            ],
+        });
+        const resized = await layouts.apply(scope, {
+            expectedRevision: 1,
+            operations: [
+                {
+                    type: "resize",
+                    id,
+                    width: 9,
+                    height: 5,
+                },
+            ],
+        });
+        expect(resized.widgets[0]?.placement).toEqual({
+            x: 0,
+            y: 0,
+            width: 9,
             height: 5,
-            width: 10,
-        })).toBe(false);
-        expect(isSupportedWidgetSize({
-            kind: "range",
-            maximum: {
-                height: 12,
-                width: 24,
+        });
+        const reopened = new DashboardLayoutCoordinator(repository, () => {
+
+            return undefined;
+        });
+        expect(await reopened.inspect(scope)).toEqual(resized);
+        for (const size of [
+            {
+                width: 25,
+                height: 5,
             },
-            minimum: {
-                height: 4,
-                width: 6,
+            {
+                width: 0,
+                height: 5,
             },
-            step: {
-                height: 2,
-                width: 2,
+            {
+                width: 9,
+                height: 1.5,
             },
-        }, {
-            height: 8,
-            width: 14,
-        })).toBe(true);
+        ]) {
+            await expect(reopened.apply(scope, {
+                expectedRevision: 2,
+                operations: [
+                    {
+                        type: "resize",
+                        id,
+                        ...size,
+                    },
+                ],
+            })).rejects.toMatchObject({ code: "invalid-placement" });
+        }
+        expect(await reopened.inspect(scope)).toEqual(resized);
+        const minimum = await reopened.apply(scope, {
+            expectedRevision: 2,
+            operations: [
+                {
+                    type: "resize",
+                    id,
+                    width: 1,
+                    height: 1,
+                },
+            ],
+        });
+        expect(minimum.widgets[0]?.placement).toEqual({
+            x: 0,
+            y: 0,
+            width: 1,
+            height: 1,
+        });
     });
 
     it("finds the first available position in row-major order", () => {

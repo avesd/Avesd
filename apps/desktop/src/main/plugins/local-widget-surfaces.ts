@@ -24,6 +24,7 @@ export class LocalWidgetSurfaces {
         widgetId: string;
         view: WebContentsView;
         disposeServices: () => void;
+        sizeKey?: string;
     }>();
     #closed = false;
     constructor(
@@ -130,6 +131,12 @@ export class LocalWidgetSurfaces {
                 width: Math.round(width),
                 height: Math.round(height),
             });
+        }
+
+        const sizeKey = JSON.stringify(command.size);
+        if (item.sizeKey !== sizeKey) {
+            item.sizeKey = sizeKey;
+            await bounded(item.view.webContents.executeJavaScript(`window.__avesdWidget.update(${sizeKey})`), 5000);
         }
 
         return { id: command.id };

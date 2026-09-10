@@ -33,15 +33,6 @@ describe("widget UI contract", () => {
                     height: 4,
                     width: 6,
                 },
-                policy: {
-                    kind: "fixed",
-                    sizes: [
-                        {
-                            height: 4,
-                            width: 6,
-                        },
-                    ],
-                },
             },
             widgetTypeId: "status",
         };

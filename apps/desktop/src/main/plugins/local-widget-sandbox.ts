@@ -119,7 +119,7 @@ export async function loadLocalWidget(contents: WebContents, draft: LocalPluginD
         const state = {configuration:{},size:${literal(draft.manifest.size)}};
         controller.update(state);
         Object.defineProperty(window, '__avesdWidget', { value: Object.freeze({
-          errors, update: () => controller.update(state),
+          errors, update: (size = state.size) => { state.size = size; controller.update(state); },
           dispose: () => { signal.abort(); controller.dispose(); root.replaceChildren(); }
         }) });
         await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));

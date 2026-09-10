@@ -63,19 +63,6 @@ const widget: WidgetContribution = {
             height: 4,
             width: 6,
         },
-        policy: {
-            kind: "fixed",
-            sizes: [
-                {
-                    height: 4,
-                    width: 6,
-                },
-                {
-                    height: 6,
-                    width: 10,
-                },
-            ],
-        },
     },
     widgetTypeId: "test",
 };
@@ -117,7 +104,6 @@ describe("DashboardShell", () => {
                         displayName: widget.displayName,
                         inputs: widget.inputs ?? [],
                         pluginId,
-                        sizePolicy: widget.sizing.policy,
                         widgetTypeId: widget.widgetTypeId,
                     }
                     : undefined;

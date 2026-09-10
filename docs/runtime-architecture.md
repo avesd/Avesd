@@ -54,8 +54,11 @@ with memory-only or alternative persistence drivers. See
 migrating the data directory.
 
 Each dashboard uses a host-owned 24-column logical grid with unbounded rows.
-Plugins contribute widget definitions with fixed or ranged size policies; the
+Plugins declare an initial widget size. Each instance can be resized independently
+in single-cell increments (at least 1 × 1), up to the remaining grid width. The
 host records the contributing plugin identity and validates every placement.
+Resize previews reach widget controllers immediately; releasing the handle commits
+the instance placement, which survives restart. Arrow keys resize one axis at a time.
 Manual controls and Agents share one transactional layout service, so invalid,
 overlapping, out-of-bounds, or stale layout batches are rejected before storage.
 

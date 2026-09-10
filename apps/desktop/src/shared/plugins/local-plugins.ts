@@ -7,7 +7,8 @@
 
 import type { PluginBrowserConfiguration } from "../browser/plugin-browser";
 import type { WebSurfaceBounds } from "../browser/web-surface";
-import type { WidgetDefinition, WidgetWorkspaceCapability } from "@avesd/workspace-model";
+import { parseWebCommand } from "../browser/web-surface";
+import type { WidgetDefinition, WidgetSize, WidgetWorkspaceCapability } from "@avesd/workspace-model";
 
 export interface LocalPluginManifest {
     readonly browser?: PluginBrowserConfiguration;
@@ -76,6 +77,7 @@ export type LocalWidgetCommand =
       readonly type: "bounds";
       readonly id: string;
       readonly bounds: WebSurfaceBounds;
+      readonly size: WidgetSize;
   };
 
 export interface LocalPluginsApi {
@@ -103,9 +105,37 @@ export const localWidgetDefinition = (manifest: LocalPluginManifest): WidgetDefi
         defaultConfiguration: {},
         inputs: [],
         defaultSize: manifest.size,
-        sizePolicy: {
-            kind: "fixed",
-            sizes: [manifest.size],
-        },
     };
 };
+
+export function parseLocalWidgetCommand(input: unknown): LocalWidgetCommand {
+
+    const command = parseWebCommand(input);
+    if (command.type === "create") {
+        return command;
+    }
+    if (command.type === "destroy") {
+        return {
+            type: "destroy",
+            id: command.id,
+        };
+    }
+    if (command.type === "bounds") {
+        const size = (input as {
+            size?: WidgetSize;
+        }).size;
+        if (!size || !Number.isSafeInteger(size.width) || !Number.isSafeInteger(size.height)
+            || size.width < 1 || size.width > 24 || size.height < 1) {
+            throw new Error("Invalid local widget size.");
+        }
+
+        return {
+            ...command,
+            size: {
+                width: size.width,
+                height: size.height,
+            },
+        };
+    }
+    throw new Error("Invalid local widget command.");
+}

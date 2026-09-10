@@ -66,6 +66,34 @@ describe("local plugin installation", () => {
         await expect(reopened.activate(draft.id, edited.revision)).rejects.toThrow("passing tests");
     });
 
+    it("allows default size changes while preserving the installed type", async () => {
+
+        const { store } = await createStore();
+        for (const width of [
+            6,
+            9,
+        ]) {
+            const draft = await store.create({
+                ...counterExample,
+                manifest: {
+                    ...counterExample.manifest,
+                    size: {
+                        width,
+                        height: 7,
+                    },
+                },
+            });
+            store.record({
+                draftId: draft.id,
+                revision: draft.revision,
+                passed: true,
+                checks: [],
+            });
+            await store.activate(draft.id, draft.revision);
+        }
+        expect((await store.installed(counterExample.manifest.id)).manifest.size.width).toBe(9);
+    });
+
     it("rejects path traversal, builtin identities, oversized source, and empty tests", async () => {
 
         const { store } = await createStore();

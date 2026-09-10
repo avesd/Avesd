@@ -22,20 +22,6 @@ export interface WidgetSize {
     readonly width: number;
 }
 
-export interface FixedWidgetSizePolicy {
-    readonly kind: "fixed";
-    readonly sizes: readonly WidgetSize[];
-}
-
-export interface RangeWidgetSizePolicy {
-    readonly kind: "range";
-    readonly maximum: WidgetSize;
-    readonly minimum: WidgetSize;
-    readonly step?: WidgetSize;
-}
-
-export type WidgetSizePolicy = FixedWidgetSizePolicy | RangeWidgetSizePolicy;
-
 export interface WidgetDefinition {
     readonly capabilities?: readonly WidgetWorkspaceCapability[];
     readonly defaultConfiguration: JsonObject;
@@ -44,7 +30,6 @@ export interface WidgetDefinition {
     readonly displayName: string;
     readonly inputs: readonly WidgetInputDefinition[];
     readonly pluginId: string;
-    readonly sizePolicy: WidgetSizePolicy;
     readonly widgetTypeId: string;
 }
 
@@ -118,7 +103,6 @@ export type DashboardLayoutErrorCode =
   | "invalid-widget-definition"
   | "multiple-sources-unsupported"
   | "overlap"
-  | "unsupported-size"
   | "widget-not-found"
   | "widget-unavailable";
 
@@ -195,7 +179,6 @@ export class DashboardLayoutCoordinator implements DashboardLayoutService {
                         definition.defaultSize,
                     );
                     assertPlacement(placement);
-                    assertSupportedSize(definition, placement);
                     widgets.push({
                         bindings: {},
                         configuration: operation.configuration ?? definition.defaultConfiguration,
@@ -303,19 +286,11 @@ export class DashboardLayoutCoordinator implements DashboardLayoutService {
                     if (!widget) {
                         break;
                     }
-                    const definition = this.#resolveWidget(widget.pluginId, widget.widgetTypeId);
-                    if (!definition) {
-                        throw new DashboardLayoutError(
-                            "widget-unavailable",
-                            `cannot resize unavailable widget: ${widget.pluginId}/${widget.widgetTypeId}`,
-                        );
-                    }
                     const placement = {
                         ...widget.placement,
                         height: operation.height,
                         width: operation.width,
                     };
-                    assertSupportedSize(definition, placement);
                     widgets[index] = {
                         ...widget,
                         placement,
@@ -338,31 +313,6 @@ export class DashboardLayoutCoordinator implements DashboardLayoutService {
         );
     }
 }
-
-export const isSupportedWidgetSize = (
-    policy: WidgetSizePolicy,
-    size: WidgetSize,
-): boolean => {
-
-    if (policy.kind === "fixed") {
-        return policy.sizes.some(({ height, width }) => {
-
-            return height === size.height && width === size.width;
-        });
-    }
-
-    const step = policy.step ?? {
-        height: 1,
-        width: 1,
-    };
-
-    return size.width >= policy.minimum.width
-    && size.width <= policy.maximum.width
-    && size.height >= policy.minimum.height
-    && size.height <= policy.maximum.height
-    && (size.width - policy.minimum.width) % step.width === 0
-    && (size.height - policy.minimum.height) % step.height === 0;
-};
 
 export const findAvailablePlacement = (
     occupied: readonly GridPlacement[],
@@ -399,39 +349,11 @@ const assertWidgetDefinition = (definition: WidgetDefinition): void => {
             `widget ${definition.pluginId}/${definition.widgetTypeId} has an invalid configuration version`,
         );
     }
-    if (
-        definition.sizePolicy.kind === "fixed"
-    && definition.sizePolicy.sizes.length === 0
-    ) {
-        throw new DashboardLayoutError(
-            "unsupported-size",
-            `widget ${definition.pluginId}/${definition.widgetTypeId} has no supported sizes`,
-        );
-    }
-    if (!isSupportedWidgetSize(definition.sizePolicy, definition.defaultSize)) {
-        throw new DashboardLayoutError(
-            "unsupported-size",
-            `widget ${definition.pluginId}/${definition.widgetTypeId} has an invalid default size`,
-        );
-    }
     assertPlacement({
         ...definition.defaultSize,
         x: 0,
         y: 0,
     });
-};
-
-const assertSupportedSize = (
-    definition: WidgetDefinition,
-    size: WidgetSize,
-): void => {
-
-    if (!isSupportedWidgetSize(definition.sizePolicy, size)) {
-        throw new DashboardLayoutError(
-            "unsupported-size",
-            `unsupported size for ${definition.pluginId}/${definition.widgetTypeId}: ${size.width}x${size.height}`,
-        );
-    }
 };
 
 export const assertDashboardLayout = (widgets: readonly WidgetInstance[]): void => {

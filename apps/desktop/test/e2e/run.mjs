@@ -14,6 +14,7 @@ const scenarios = {
     "browser-auth": "browser-auth.test.mjs",
     plugins: "plugin-lifecycle.test.mjs",
     workspace: "workspace.test.mjs",
+    "widget-resize": "widget-resize.test.mjs",
     storage: "plugin-storage.test.mjs",
     resources: "shared-resources.test.mjs",
 };

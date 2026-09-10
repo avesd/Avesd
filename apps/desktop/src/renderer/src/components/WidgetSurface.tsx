@@ -41,10 +41,6 @@ export const WidgetSurface = ({
     ]);
     const placement = preview ?? instance.placement;
     const name = definition?.displayName ?? "Missing widget";
-    const canResize = definition && (definition.sizing.policy.kind === "range"
-        ? definition.sizing.policy.minimum.width !== definition.sizing.policy.maximum.width
-      || definition.sizing.policy.minimum.height !== definition.sizing.policy.maximum.height
-        : definition.sizing.policy.sizes.length > 1);
 
     const move = (x: number, y: number) => {
 
@@ -93,10 +89,10 @@ export const WidgetSurface = ({
             }
             const dx = (moving.clientX - start.x) / cellWidth;
             const dy = (moving.clientY - start.y) / 24;
-            next = kind === "resize" && definition
+            next = kind === "resize"
                 ? {
                     ...original,
-                    ...snapSize(definition, original, original.width + dx, original.height + dy, cellWidth),
+                    ...snapSize(original, original.width + dx, original.height + dy),
                 }
                 : {
                     ...original,
@@ -164,7 +160,10 @@ export const WidgetSurface = ({
                     widgetServices={widgetServices}
                     apply={apply}
                     definition={definition}
-                    instance={instance}
+                    instance={preview ? {
+                        ...instance,
+                        placement,
+                    } : instance}
                 />
                 : <p
                     className="dashboard-widget-missing"
@@ -230,10 +229,10 @@ export const WidgetSurface = ({
                     >
                         ×
                     </button>
-                    {canResize && <button
+                    <button
                         className="widget-resize-handle"
                         aria-label={`Resize ${name}`}
-                        title="Drag to resize to supported sizes. Use arrow keys when focused."
+                        title="Drag to resize. Use arrow keys when focused."
                         onPointerDown={(event) => {
 
                             return void beginGesture(event, "resize");
@@ -250,32 +249,11 @@ export const WidgetSurface = ({
                             }
                             event.preventDefault();
                             const current = instance.placement;
-                            const policy = definition.sizing.policy;
-                            const growing = event.key === "ArrowRight" || event.key === "ArrowDown";
-                            if (policy.kind === "fixed") {
-                                const ordered = [...policy.sizes].filter(size => {
-
-                                    return size.width <= 24 - current.x;
-                                })
-                                    .sort((a, b) => {
-
-                                        return a.width * a.height - b.width * b.height || a.width - b.width;
-                                    });
-                                const index = ordered.findIndex(size => {
-
-                                    return size.width === current.width && size.height === current.height;
-                                });
-                                const next = ordered[index + (growing ? 1 : -1)];
-                                if (next) {
-                                    void resize(next);
-                                }
-                            } else {
-                                const step = policy.step ?? {
-                                    width: 1,
-                                    height: 1,
-                                };
-                                void resize(snapSize(definition, current, current.width + (event.key === "ArrowRight" ? step.width : event.key === "ArrowLeft" ? -step.width : 0), current.height + (event.key === "ArrowDown" ? step.height : event.key === "ArrowUp" ? -step.height : 0), 24));
-                            }
+                            void resize(snapSize(
+                                current,
+                                current.width + (event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0),
+                                current.height + (event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0),
+                            ));
                         }}
                         type="button"
                     >
@@ -292,48 +270,17 @@ export const WidgetSurface = ({
                                 strokeWidth="2"
                             />
                         </svg>
-                    </button>}
+                    </button>
                 </div>
             )}
         </article>
     );
 };
 
-const snapSize = (definition: WidgetContribution, current: GridPlacement, width: number, height: number, cellWidth: number): WidgetSize => {
-
-    const policy = definition.sizing.policy;
-    if (policy.kind === "fixed") {
-        const distance = (size: WidgetSize) => {
-
-            return ((size.width - width) * cellWidth) ** 2 + ((size.height - height) * 24) ** 2;
-        };
-
-        return policy.sizes.filter(size => {
-
-            return size.width <= 24 - current.x;
-        }).reduce<WidgetSize>(
-            (nearest, size) => {
-
-                return distance(size) < distance(nearest) ? size : nearest;
-            },
-            {
-                width: current.width,
-                height: current.height,
-            },
-        );
-    }
-    const step = policy.step ?? {
-        width: 1,
-        height: 1,
-    };
-    const snap = (value: number, minimum: number, maximum: number, increment: number) =>
-    {
-
-        return minimum + Math.max(0, Math.min(Math.floor((maximum - minimum) / increment), Math.round((value - minimum) / increment))) * increment;
-    };
+const snapSize = (current: GridPlacement, width: number, height: number): WidgetSize => {
 
     return {
-        width: snap(width, policy.minimum.width, Math.min(policy.maximum.width, 24 - current.x), step.width),
-        height: snap(height, policy.minimum.height, policy.maximum.height, step.height),
+        width: Math.max(1, Math.min(24 - current.x, Math.round(width))),
+        height: Math.max(1, Math.round(height)),
     };
 };

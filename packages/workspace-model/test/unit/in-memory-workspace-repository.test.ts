@@ -33,15 +33,6 @@ const widgetDefinition = {
     displayName: "Chart",
     inputs: [],
     pluginId: "example.plugin",
-    sizePolicy: {
-        kind: "fixed" as const,
-        sizes: [
-            {
-                height: 4,
-                width: 6,
-            },
-        ],
-    },
     widgetTypeId: "example.chart",
 };
 

@@ -77,6 +77,7 @@ export const agentToolDefinitions = {
         schema: z.object({
             pluginId: z.string(),
             widgetTypeId: z.string(),
+            configuration: z.record(z.string(), z.unknown()).optional(),
         }),
     },
     avesd_move_widget: {

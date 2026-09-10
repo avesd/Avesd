@@ -121,19 +121,6 @@ const counterWidget: WidgetContribution = {
             height: 7,
             width: 6,
         },
-        policy: {
-            kind: "fixed",
-            sizes: [
-                {
-                    height: 7,
-                    width: 6,
-                },
-                {
-                    height: 8,
-                    width: 8,
-                },
-            ],
-        },
     },
     widgetTypeId: "counter",
 };

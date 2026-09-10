@@ -65,15 +65,6 @@ describe("temporary web outputs", () => {
                     width: 6,
                     height: 6,
                 },
-                sizePolicy: {
-                    kind: "fixed",
-                    sizes: [
-                        {
-                            width: 6,
-                            height: 6,
-                        },
-                    ],
-                },
                 inputs: [
                     {
                         id: "result",

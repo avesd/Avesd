@@ -78,7 +78,6 @@ describe("counter plugin data flow", () => {
                 displayName: contribution.value.displayName,
                 inputs: contribution.value.inputs ?? [],
                 pluginId: contribution.pluginId,
-                sizePolicy: contribution.value.sizing.policy,
                 widgetTypeId: contribution.value.widgetTypeId,
             } satisfies WidgetDefinition : undefined;
         });

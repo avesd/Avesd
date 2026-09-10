@@ -50,19 +50,6 @@ export function createWebPlugin(api: WebSurfaceApi, results: WebResults): Plugin
                 width: 12,
                 height: 20,
             },
-            policy: {
-                kind: "fixed",
-                sizes: [
-                    {
-                        width: 12,
-                        height: 20,
-                    },
-                    {
-                        width: 24,
-                        height: 26,
-                    },
-                ],
-            },
         },
         mount(root, context) {
 
@@ -410,23 +397,6 @@ export function createWebPlugin(api: WebSurfaceApi, results: WebResults): Plugin
                 width: 12,
                 height: 10,
             },
-            policy: {
-                kind: "fixed",
-                sizes: [
-                    {
-                        width: 12,
-                        height: 10,
-                    },
-                    {
-                        width: 12,
-                        height: 20,
-                    },
-                    {
-                        width: 24,
-                        height: 12,
-                    },
-                ],
-            },
         },
         mount(root, context) {
 
@@ -480,19 +450,6 @@ export function createWebPlugin(api: WebSurfaceApi, results: WebResults): Plugin
             default: {
                 width: 12,
                 height: 14,
-            },
-            policy: {
-                kind: "fixed",
-                sizes: [
-                    {
-                        width: 12,
-                        height: 14,
-                    },
-                    {
-                        width: 12,
-                        height: 20,
-                    },
-                ],
             },
         },
         mount(root, context) {
