@@ -6,6 +6,7 @@
  */
 
 import type { AcpRuntimeEvent, AcpSessionConnectionOptions } from "./acp-session-contract";
+import { sessionFailureCapabilities, sessionFailureError } from "./acp-session-failure";
 import * as acp from "@agentclientprotocol/sdk";
 
 async function sessionRequest<T>(connection: acp.ClientConnection, work: Promise<T>): Promise<T> {
@@ -144,7 +145,7 @@ export class AcpSessionConnection {
             const initialized = await sessionRequest(connection, connection.agent.request<acp.InitializeResponse>(
                 "initialize",
                 {
-                    clientCapabilities: {},
+                    clientCapabilities: sessionFailureCapabilities,
                     clientInfo: options.clientInfo,
                     protocolVersion: acp.PROTOCOL_VERSION,
                 },
@@ -282,6 +283,11 @@ export class AcpSessionConnection {
                 sessionId: this.sessionId,
             },
         );
+
+        const failure = sessionFailureError(response._meta);
+        if (failure) {
+            throw failure;
+        }
 
         return response.stopReason;
     }

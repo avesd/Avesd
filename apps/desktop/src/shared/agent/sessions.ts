@@ -25,6 +25,29 @@ export interface AgentTierRoute {
     readonly effortId: string;
 }
 export type AgentTierRoutes = Readonly<Record<AgentTier, AgentTierRoute>>;
+export interface AgentRouteOptions {
+    readonly models: readonly {
+        readonly id: string;
+        readonly name: string;
+    }[];
+    readonly efforts: readonly {
+        readonly id: string;
+        readonly name: string;
+    }[];
+    readonly defaultModelId?: string;
+    readonly defaultEffortId?: string;
+    readonly modelId?: string;
+    readonly effortId?: string;
+}
+export type AgentRouteProbeResult = {
+    readonly ok: true;
+    readonly options: AgentRouteOptions;
+    readonly tested: boolean;
+}
+    | {
+        readonly ok: false;
+        readonly message: string;
+    };
 export interface AgentSessionSummary extends DashboardScope {
     readonly id: string;
     readonly tier: AgentTier;
@@ -40,6 +63,10 @@ export interface AgentSessionSnapshot extends AgentSessionSummary {
     }[];
     readonly settings?: AgentSettings;
 }
+export type AgentSessionsChange = {
+    readonly type: "updated" | "removed" | "selectionChanged";
+    readonly id: string;
+};
 export interface AgentSessionsApi {
     list(): Promise<{
         readonly selectedId?: string;
@@ -49,14 +76,15 @@ export interface AgentSessionsApi {
         readonly id: string;
     }>;
     select(id: string): Promise<void>;
-    read(id: string): Promise<AgentSessionSnapshot>;
+    read(id: string): Promise<AgentSessionSnapshot | null>;
     connect(id: string): Promise<void>;
     prompt(id: string, text: string): Promise<void>;
     cancel(id: string): Promise<void>;
     remove(id: string): Promise<void>;
     routes(): Promise<AgentTierRoutes>;
     configure(routes: AgentTierRoutes): Promise<void>;
-    subscribe(listener: () => void): () => void;
+    probeRoute(route: AgentTierRoute, test: boolean): Promise<AgentRouteProbeResult>;
+    subscribe(listener: (change: AgentSessionsChange) => void): () => void;
 }
 export const agentSessionsChannels = {
     command: "agent-sessions:command",
@@ -90,24 +118,29 @@ export function parseAgentRoutes(input: unknown): AgentTierRoutes {
 
     return Object.fromEntries(AGENT_TIERS.map(tier => {
 
-        const value = (input as Record<string, unknown>)[tier] as Record<string, unknown> | undefined;
-        if (!value || ![
-            "codex",
-            "claude",
-            "opencode",
-        ].includes(String(value.providerId))
-            || typeof value.modelId !== "string" || value.modelId.length > 512
-            || typeof value.effortId !== "string" || value.effortId.length > 512) {
-            throw new Error("Invalid agent tier route.");
-        }
-
         return [
             tier,
-            {
-                providerId: value.providerId,
-                modelId: value.modelId.trim(),
-                effortId: value.effortId.trim(),
-            },
+            parseAgentRoute((input as Record<string, unknown>)[tier]),
         ];
     })) as unknown as AgentTierRoutes;
+}
+
+export function parseAgentRoute(input: unknown): AgentTierRoute {
+
+    const value = input as Record<string, unknown> | undefined;
+    if (!value || typeof value !== "object" || ![
+        "codex",
+        "claude",
+        "opencode",
+    ].includes(String(value.providerId))
+            || typeof value.modelId !== "string" || value.modelId.length > 512
+            || typeof value.effortId !== "string" || value.effortId.length > 512) {
+        throw new Error("Invalid agent tier route.");
+    }
+
+    return {
+        providerId: value.providerId as AgentProviderId,
+        modelId: value.modelId.trim(),
+        effortId: value.effortId.trim(),
+    };
 }

@@ -6,6 +6,28 @@ effort ID. Blank IDs use that adapter's default. Explicit IDs must be supported
 by the connected ACP; unsupported values fail before the prompt is sent.
 Provider installation and login remain in the ACP settings section.
 
+Model and effort selectors load their options from a fresh ACP session. Changing
+the model reloads its effort choices and resets the selected effort to the ACP
+default. Saved IDs that are no longer offered remain visible until replaced;
+they are never silently substituted. Refresh models retries discovery. An ACP
+that does not report model options can still use its default.
+
+Discovery does not send a model prompt. Test connection sends one fixed short
+request using the selected model and effort, which may consume provider quota.
+A successful test confirms that request only; listed models are not guaranteed
+to remain accessible. Changing the selection or refreshing clears the result.
+Discovery and tests use temporary sessions without Avesd MCP tools, do not appear
+in Sessions, and do not change saved routes or existing conversations. Checks
+are limited to three concurrent operations with a 45-second operation deadline
+and clean up their adapter processes and scratch directories afterward.
+
+The client negotiates the adapter's structured session-failure extension.
+Terminal failure metadata marks the request as failed even when the ACP stop
+reason is `end_turn`; ordinary assistant text is never parsed as an error.
+Failures show a bounded local message and a Retry action. Retry restores the
+connection so another prompt can be sent in the same session. Model and CLI
+compatibility still depend on the selected local provider installation.
+
 Each new session captures its tier configuration. Changing settings does not
 change sessions already created. Widgets receive the tier abstraction, not
 provider installation paths or model configuration.

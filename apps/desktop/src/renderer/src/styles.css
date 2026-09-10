@@ -768,6 +768,7 @@ button {
 
 .agent-error {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 12px;
   margin: 0 14px 10px;
@@ -779,13 +780,16 @@ button {
 }
 
 .agent-error span {
-  overflow: hidden;
+  min-width: 0;
+  max-height: 8em;
+  overflow: auto;
   flex: 1;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
 }
 
 .agent-error button {
+  flex-shrink: 0;
   padding: 2px 0;
   border: 0;
   color: inherit;
@@ -950,6 +954,8 @@ button {
 .agent-tier-settings label { display: grid; grid-template-columns: 75px minmax(0, 1fr); align-items: center; gap: 8px; margin: 8px 0; }
 .agent-tier-settings input, .agent-tier-settings select, .session-new select { min-width: 0; width: 100%; padding: 7px; border: 1px solid #c7cebf; border-radius: 6px; background: white; color: inherit; font: inherit; }
 .agent-tier-settings p, .session-controls p { color: #60685b; font-size: 12px; line-height: 1.5; }
+.agent-tier-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.agent-tier-settings [role="alert"] { color: #984b40; overflow-wrap: anywhere; }
 .session-controls { padding: 16px; border-bottom: 1px solid #d4d9cf; }
 .session-tabs, .session-new, .session-actions { display: flex; gap: 8px; }
 .session-tabs button[aria-pressed="true"] { background: #dfe8d7; color: #294333; }

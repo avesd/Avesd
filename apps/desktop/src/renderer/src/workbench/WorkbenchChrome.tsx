@@ -38,7 +38,8 @@ export function useAgentPanel() {
     return context;
 }
 
-export function WorkbenchChrome({ children, preferences, agentAvailable = true, agentProviders, agentSessions, workspaceNavigation, workspaceStorage }: {
+export function WorkbenchChrome({ children, preferences, agentAvailable = true, agentProviders, agentSessions, workspaceNavigation, workspaceStorage, browserTasks }: {
+    readonly browserTasks?: BrowserTasksApi;
     readonly children: ReactNode;
     readonly preferences: WorkbenchPreferencesApi;
     readonly agentAvailable?: boolean;
@@ -58,7 +59,7 @@ export function WorkbenchChrome({ children, preferences, agentAvailable = true, 
     const [
         panel,
         setPanel,
-    ] = useState<"agent" | "settings" | "workspaces" | "sessions">();
+    ] = useState<"agent" | "settings" | "workspaces" | "sessions" | "browsers">();
     const [
         listing,
         setListing,
@@ -81,15 +82,34 @@ export function WorkbenchChrome({ children, preferences, agentAvailable = true, 
             return;
         }
         let active = true; let revision = 0;
+        let refreshing = false; let pending = false;
+        const isActive = () => {
+
+            return active;
+        };
         const refresh = async () => {
 
+            if (!isActive()) {
+                return;
+            }
+            if (refreshing) {
+                pending = true; revision++;
+
+                return;
+            }
+            refreshing = true;
             const current = ++revision; try {
                 const result = await agentSessions.list(); if (active && current === revision) {
                     setListing(result);
                 }
             } catch {
-                if (active) {
+                if (active && current === revision) {
                     setError("Sessions could not be loaded.");
+                }
+            } finally {
+                refreshing = false;
+                if (pending && active) {
+                    pending = false; void refresh();
                 }
             }
         };

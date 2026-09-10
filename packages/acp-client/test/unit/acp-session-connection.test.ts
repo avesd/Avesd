@@ -20,7 +20,16 @@ describe("AcpSessionConnection", () => {
         let correlatedOutcome: unknown;
         let receivedMcpServers: unknown;
         const agent = acp.agent({ name: "test-agent" })
-            .onRequest("initialize", () => {
+            .onRequest("initialize", ({ params }) => {
+
+                expect(params.clientCapabilities?._meta).toMatchObject({
+                    jetbrains: {
+                        air: {
+                            version: 1,
+                            capabilities: ["sessionFailure"],
+                        },
+                    },
+                });
 
                 return {
                     agentCapabilities: {},
@@ -39,6 +48,26 @@ describe("AcpSessionConnection", () => {
                 return { sessionId: "session-1" };
             })
             .onRequest("session/prompt", async ({ client, params }) => {
+
+                if (params.prompt.some(item => {
+
+                    return item.type === "text" && item.text === "Fail";
+                })) {
+                    return {
+                        stopReason: "end_turn",
+                        _meta: {
+                            jetbrains: {
+                                air: {
+                                    version: 1,
+                                    sessionFailure: {
+                                        severity: "error",
+                                        title: "Synthetic private response",
+                                    },
+                                },
+                            },
+                        },
+                    };
+                }
 
                 await client.notify("session/update", {
                     sessionId: params.sessionId,
@@ -188,6 +217,7 @@ describe("AcpSessionConnection", () => {
             },
         });
 
+        await expect(session.prompt("Fail")).rejects.toThrow("CLI version");
         await expect(session.prompt("Hi")).resolves.toBe("end_turn");
         expect(session.agentName).toBe("Test Agent");
         expect(onEvent).toHaveBeenCalledWith({

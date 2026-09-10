@@ -24,6 +24,33 @@ const origin = {
 
 describe("unified agent sessions", () => {
 
+    it("publishes one removal after clearing the entry and selection", async () => {
+
+        const changed = vi.fn();
+        const manager = new AgentSessions(new AgentPreferences(), async () => {
+
+            return origin;
+        }, async () => {
+
+            throw new Error("Unexpected host creation");
+        }, changed);
+        const { id } = await manager.create();
+        changed.mockClear();
+        changed.mockImplementation(() => {
+
+            expect(manager.snapshot(id)).toBeNull();
+            expect(manager.list()).toEqual({
+                selectedId: undefined,
+                sessions: [],
+            });
+        });
+        await manager.remove(id);
+        expect(changed).toHaveBeenCalledExactlyOnceWith({
+            type: "removed",
+            id,
+        });
+    });
+
     it("runs independent sessions, snapshots routes, and keeps histories when selection changes", async () => {
 
         const preferences = new AgentPreferences();

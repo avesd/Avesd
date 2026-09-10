@@ -5,7 +5,7 @@
  * @description In-memory lifecycle and transcripts for independent ACP sessions
  */
 
-import type { AgentSessionSnapshot, AgentSessionSummary, AgentTierRoute } from "../../shared/agent/sessions";
+import type { AgentSessionsChange, AgentSessionSnapshot, AgentSessionSummary, AgentTierRoute } from "../../shared/agent/sessions";
 import type { AcpAgentHost } from "./acp-agent-host";
 import type { AgentPreferences } from "./agent-preferences";
 import type { AgentEvent, AgentSettings, AgentTier } from "@avesd/plugin-api";
@@ -49,7 +49,7 @@ export class AgentSessions {
             host: SessionHost;
             release(): void;
         }>,
-        private readonly changed: () => void,
+        private readonly changed: (change: AgentSessionsChange) => void,
     ) {}
 
     list(): {
@@ -67,7 +67,19 @@ export class AgentSessions {
     }
     read(id: string): AgentSessionSnapshot {
 
-        const entry = this.#entry(id);
+        const snapshot = this.snapshot(id);
+        if (!snapshot) {
+            throw new Error("Agent session is unavailable.");
+        }
+
+        return snapshot;
+    }
+    snapshot(id: string): AgentSessionSnapshot | null {
+
+        const entry = this.#entries.get(id);
+        if (!entry) {
+            return null;
+        }
 
         return {
             ...entry.summary,
@@ -112,7 +124,12 @@ export class AgentSessions {
         if (resolved.kind === "interactive") {
             this.select(id);
         }
-        this.changed();
+        else {
+            this.changed({
+                type: "updated",
+                id,
+            });
+        }
 
         return { id };
     }
@@ -122,11 +139,25 @@ export class AgentSessions {
         this.#selectedId = id;
         this.#legacy({ type: "sessionReset" });
         for (const { event } of entry.events) {this.#legacy(event);}
-        this.changed();
+        this.changed({
+            type: "selectionChanged",
+            id,
+        });
     }
     async connect(id?: string): Promise<void> {
 
-        await this.#prepare(await this.#resolve(id));
+        const entry = await this.#resolve(id);
+        await this.#prepare(entry);
+        if (entry.summary.status === "error") {
+            entry.summary = {
+                ...entry.summary,
+                status: "idle",
+            };
+            this.changed({
+                type: "updated",
+                id: entry.summary.id,
+            });
+        }
     }
     async prompt(text: string, id?: string): Promise<void> {
 
@@ -167,18 +198,35 @@ export class AgentSessions {
                     ...entry.summary,
                     status: "error",
                 };
-                this.#record(entry, {
-                    type: "status",
-                    status: "error",
-                    message: "Agent task failed. Check the configured ACP, model, effort and local login.",
-                });
+                if (entry.settings?.status !== "error") {
+                    this.#record(entry, {
+                        type: "status",
+                        status: "error",
+                        message: "Agent task failed. Check the configured ACP, model, effort and local login.",
+                    });
+                }
             }
             throw new Error("Agent task failed.");
-        } finally { this.changed(); }
+        } finally {
+            if (this.#entries.has(entry.summary.id)) {
+                this.changed({
+                    type: "updated",
+                    id: entry.summary.id,
+                });
+            }
+        }
     }
     async cancel(id?: string): Promise<void> {
 
         const entry = await this.#resolve(id);
+        this.#stop(entry);
+        this.#record(entry, {
+            type: "status",
+            status: "disconnected",
+        });
+    }
+    #stop(entry: Entry): void {
+
         entry.stopped = true;
         entry.summary = {
             ...entry.summary,
@@ -188,19 +236,18 @@ export class AgentSessions {
         void entry.host?.cancel().catch(() => {
         });
         entry.host?.dispose(); entry.release?.(); entry.host = undefined; entry.release = undefined;
-        this.#record(entry, {
-            type: "status",
-            status: "disconnected",
-        });
-        this.changed();
     }
     async remove(id: string): Promise<void> {
 
-        await this.cancel(id); this.#entries.delete(id);
+        const entry = this.#entry(id);
+        this.#stop(entry); this.#entries.delete(id);
         if (this.#selectedId === id) {
             this.#selectedId = undefined;
         }
-        this.changed();
+        this.changed({
+            type: "removed",
+            id,
+        });
     }
     async getSettings(): Promise<AgentSettings> {
 
@@ -238,7 +285,7 @@ export class AgentSessions {
     }
     publishSettings(): void {
 
-        for (const entry of this.#entries.values()) {entry.host?.publishSettings();} this.changed();
+        for (const entry of this.#entries.values()) {entry.host?.publishSettings();}
     }
     subscribe(listener: (event: AgentEvent) => void): () => void {
 
@@ -335,8 +382,17 @@ export class AgentSessions {
     }
     #record(entry: Entry, event: AgentEvent): void {
 
+        if (this.#entries.get(entry.summary.id) !== entry) {
+            return;
+        }
         if (event.type === "settings") {
             entry.settings = event.settings;
+        }
+        if (event.type === "status" && entry.settings) {
+            entry.settings = {
+                ...entry.settings,
+                status: event.status,
+            };
         }
         if (event.type === "status" && (event.status === "error" || event.status === "disconnected")) {
             entry.ready = false;
@@ -353,6 +409,9 @@ export class AgentSessions {
         if (entry.summary.id === this.#selectedId) {
             this.#legacy(event);
         }
-        this.changed();
+        this.changed({
+            type: "updated",
+            id: entry.summary.id,
+        });
     }
 }

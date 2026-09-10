@@ -7,7 +7,7 @@
 
 import type { AgentProviderConfiguration, AgentProviderId, AgentProviderInstallation } from "../shared/agent/providers";
 import { agentProvidersChannels } from "../shared/agent/providers";
-import type { AgentSessionSnapshot, AgentSessionSummary, AgentTierRoutes } from "../shared/agent/sessions";
+import type { AgentRouteProbeResult, AgentSessionsChange, AgentSessionSnapshot, AgentSessionSummary, AgentTierRoute, AgentTierRoutes } from "../shared/agent/sessions";
 import { agentSessionsChannels } from "../shared/agent/sessions";
 import type { WidgetAgentRequest } from "../shared/agent/widget-agent";
 import type { BrowserBinding, BrowserControlAction, BrowserControlsCommand } from "../shared/browser/browser-controls";
@@ -54,6 +54,14 @@ export const desktopApi: DesktopApi = Object.freeze({
         },
     },
     agentSessions: {
+        probeRoute: (route: AgentTierRoute, test: boolean) => {
+
+            return ipcRenderer.invoke(agentSessionsChannels.command, {
+                type: "probeRoute",
+                route,
+                test,
+            }) as Promise<AgentRouteProbeResult>;
+        },
         list: () => {
 
             return ipcRenderer.invoke(agentSessionsChannels.command, { type: "list" }) as Promise<{
@@ -82,7 +90,7 @@ export const desktopApi: DesktopApi = Object.freeze({
             return ipcRenderer.invoke(agentSessionsChannels.command, {
                 type: "read",
                 id,
-            }) as Promise<AgentSessionSnapshot>;
+            }) as Promise<AgentSessionSnapshot | null>;
         },
         connect: (id: string) => {
 
@@ -124,13 +132,17 @@ export const desktopApi: DesktopApi = Object.freeze({
                 routes,
             }) as Promise<void>;
         },
-        subscribe: (listener: () => void) => {
+        subscribe: (listener: (change: AgentSessionsChange) => void) => {
 
-            ipcRenderer.on(agentSessionsChannels.changed, listener);
+            const receive = (_event: Electron.IpcRendererEvent, change: AgentSessionsChange) => {
+
+                listener(change);
+            };
+            ipcRenderer.on(agentSessionsChannels.changed, receive);
 
             return () => {
 
-                ipcRenderer.off(agentSessionsChannels.changed, listener);
+                ipcRenderer.off(agentSessionsChannels.changed, receive);
             };
         },
     },

@@ -6,8 +6,9 @@
  */
 
 import { agentProvidersChannels } from "../shared/agent/providers";
-import { agentSessionsChannels, parseAgentTier } from "../shared/agent/sessions";
+import { agentSessionsChannels, parseAgentRoute, parseAgentTier } from "../shared/agent/sessions";
 import { browserControlsChannel, parseBrowserControls } from "../shared/browser/browser-controls";
+import { browserTaskCommandSchema, browserTasksChanged, browserTasksChannel } from "../shared/browser/browser-tasks";
 import { parseWebCommand, settleWebSurfaceCommand, webSurfaceChannel, webSurfaceEventChannel } from "../shared/browser/web-surface";
 import type { AgentWorkbenchContext } from "../shared/desktop-api";
 import { agentIpcChannels,
@@ -20,6 +21,7 @@ import { parseWidgetWorkspaceRequest, widgetWorkspaceChannels } from "../shared/
 import { parseWorkspaceNavigation, workspaceNavigationChannel } from "../shared/workspace/workspace-navigation";
 import { AcpAgentHost } from "./agent/acp-agent-host";
 import { openAgentGateway } from "./agent/agent-gateway";
+import { AgentModels } from "./agent/agent-models";
 import { AgentPreferences } from "./agent/agent-preferences";
 import { AgentSessions } from "./agent/agent-sessions";
 import { AgentTaskBridge } from "./agent/agent-task-bridge";
@@ -53,6 +55,7 @@ export function startDesktop() {
     let workbenchPreferences: WorkbenchPreferences;
     let agentPreferences = new AgentPreferences();
     let agentHost: AgentSessions | undefined;
+    let agentModels: AgentModels | undefined;
     let mainWindow: BrowserWindow | undefined;
     let workspaceFile: WorkspaceFile | undefined;
     let workbench: AgentWorkbench | undefined;
@@ -284,6 +287,15 @@ export function startDesktop() {
             throw new Error("Invalid session command.");
         }
         const request = input as Record<string, unknown>;
+        if (request.type === "probeRoute") {
+            if (!agentModels || typeof request.test !== "boolean") {
+                throw new Error("Invalid model check.");
+            }
+            const route = parseAgentRoute(request.route);
+            await providerInstallations.refresh();
+
+            return agentModels.probe(route, request.test);
+        }
         if (request.type === "list") {
             return sessions.list();
         }
@@ -302,7 +314,7 @@ export function startDesktop() {
             throw new Error("Invalid session ID.");
         }
         switch (request.type) {
-            case "read": return sessions.read(request.id);
+            case "read": return sessions.snapshot(request.id);
             case "select": return void sessions.select(request.id);
             case "connect": return sessions.connect(request.id);
             case "prompt": return sessions.prompt(parseAgentPrompt(request.text), request.id);
@@ -534,6 +546,10 @@ export function startDesktop() {
 
             return undefined;
         });
+        agentModels = new AgentModels(agentRuntimeRoot, () => {
+
+            return createAgentProviders(providerInstallations);
+        });
         agentHost = new AgentSessions(agentPreferences, async () => {
 
             const snapshot = await workspaceFile!.load();
@@ -594,10 +610,10 @@ export function startDesktop() {
                     return void address.close();
                 },
             };
-        }, () => {
+        }, change => {
 
             if (mainWindow && !mainWindow.isDestroyed()) {
-                mainWindow.webContents.send(agentSessionsChannels.changed);
+                mainWindow.webContents.send(agentSessionsChannels.changed, change);
             }
         });
         agentHost.subscribe(event => {
@@ -635,6 +651,7 @@ export function startDesktop() {
 
         closePluginStorageProcesses();
         agentHost?.dispose();
+        agentModels?.dispose();
         localWidgetRunner.dispose();
         localWidgetSurfaces?.dispose();
         gateway?.close();

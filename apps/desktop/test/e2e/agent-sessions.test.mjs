@@ -54,6 +54,94 @@ try {
             executablePath: executable,
         });
     }, executable);
+    // Blank model/effort must become ready without a configuration-change event.
+    await page.evaluate(() => {
+
+        return window.avesd.agentSessions.configure(Object.fromEntries([
+            "flagship",
+            "reasoning",
+            "action",
+        ].map(tier => {
+
+            return [
+                tier,
+                {
+                    providerId: "opencode",
+                    modelId: "",
+                    effortId: "",
+                },
+            ];
+        })));
+    });
+    await page.getByRole("button", {
+        name: "Open agent",
+        exact: true,
+    }).click();
+    const composer = page.getByRole("textbox", {
+        name: "Message agent",
+        exact: true,
+    });
+    await composer.fill("Synthetic provider failure");
+    await page.getByRole("button", {
+        name: "Send message",
+        exact: true,
+    }).click();
+    const failedId = (await page.evaluate(() => {
+
+        return window.avesd.agentSessions.list();
+    })).selectedId;
+    await expect.poll(() => {
+
+        return page.evaluate(id => {
+
+            return window.avesd.agentSessions.read(id);
+        }, failedId);
+    }).toMatchObject({
+        status: "error",
+        settings: { status: "error" },
+    });
+    await expect(page.getByRole("alert")).toContainText("CLI version");
+    await expect(page.getByText("Synthetic private provider response", { exact: true })).toHaveCount(0);
+    await expect(composer).toBeEnabled();
+    await page.getByRole("button", {
+        name: "Retry",
+        exact: true,
+    }).click();
+    await expect.poll(() => {
+
+        return page.evaluate(id => {
+
+            return window.avesd.agentSessions.read(id);
+        }, failedId);
+    }).toMatchObject({
+        status: "idle",
+        settings: { status: "connected" },
+    });
+    await expect(page.getByRole("alert")).toHaveCount(0);
+    await composer.fill("Synthetic recovered prompt");
+    await page.getByRole("button", {
+        name: "Send message",
+        exact: true,
+    }).click();
+    await expect.poll(() => {
+
+        return page.evaluate(id => {
+
+            return window.avesd.agentSessions.read(id);
+        }, failedId);
+    }).toMatchObject({
+        status: "completed",
+        settings: { status: "connected" },
+    });
+    await expect(composer).toBeEnabled();
+    await page.getByRole("button", {
+        name: "Close agent",
+        exact: true,
+    }).click();
+    await page.evaluate(id => {
+
+        return window.avesd.agentSessions.remove(id);
+    }, failedId);
     const routes = {
         flagship: {
             providerId: "opencode",
@@ -94,9 +182,18 @@ try {
             ],
         ]) {
         await page.getByLabel(`${label} ACP`, { exact: true }).selectOption("opencode");
-        await page.getByLabel(`${label} model`, { exact: true }).fill(routes[tier].modelId);
-        await page.getByLabel(`${label} effort`, { exact: true }).fill(routes[tier].effortId);
+        await page.getByLabel(`${label} model`, { exact: true }).selectOption(routes[tier].modelId);
+        await page.getByLabel(`${label} effort`, { exact: true }).selectOption(routes[tier].effortId);
     }
+    await page.getByRole("button", {
+        name: "Test Flagship connection",
+        exact: true,
+    }).click();
+    await page.getByText("Test passed · Available · synthetic Deep", { exact: true }).waitFor();
+    assert.equal((await page.evaluate(() => {
+
+        return window.avesd.agentSessions.list();
+    })).sessions.length, 0);
     await page.getByRole("button", {
         name: "Save agent tiers",
         exact: true,

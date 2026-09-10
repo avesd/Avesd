@@ -9,6 +9,7 @@ import type { AgentGatewayAddress } from "./agent-gateway";
 import type { AgentPreferences } from "./agent-preferences";
 import { authorizeAvesdTool, AVESD_MCP_SERVER_NAME } from "./agent-tool-permission";
 import type { AgentProvider } from "./providers";
+import { stopAgentProcess } from "./stop-agent-process";
 import type { AcpRuntimeEvent } from "@avesd/acp-client";
 import { AcpSessionConnection } from "@avesd/acp-client";
 import type { AgentConnectionStatus, AgentEvent, AgentSettings, Dispose } from "@avesd/plugin-api";
@@ -317,6 +318,13 @@ export class AcpAgentHost {
             return Promise.reject(new Error("Agent settings are changing."));
         }
         if (this.#session) {
+            if (this.#status === "error") {
+                this.#emit({
+                    type: "status",
+                    status: "connected",
+                });
+            }
+
             return Promise.resolve();
         }
         if (this.#connecting) {
@@ -443,6 +451,15 @@ export class AcpAgentHost {
             mode: 0o700,
         });
         const cwd = await mkdtemp(join(this.#runtimeRoot, "session-"));
+        // Disposal can occur during asynchronous directory creation.
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (this.#disposed) {
+            await rm(cwd, {
+                recursive: true,
+                force: true,
+            });
+            throw new Error("This agent session has ended.");
+        }
         this.#cwd = cwd;
         const child = spawn(launch.command, launch.args, {
             cwd,
@@ -569,29 +586,21 @@ export class AcpAgentHost {
         this.#child = undefined;
         const cwd = this.#cwd;
         this.#cwd = undefined;
-        if (child && !child.killed) {
+        void (async () => {
+
+            if (child) {
+                await stopAgentProcess(child);
+            }
             if (cwd) {
-                child.once("exit", () => {
-
-                    void rm(cwd, {
-                        recursive: true,
-                        force: true,
-                    }).catch(() => {
-
-                        return undefined;
-                    });
+                await rm(cwd, {
+                    recursive: true,
+                    force: true,
                 });
             }
-            child.kill();
-        } else if (cwd) {
-            void rm(cwd, {
-                recursive: true,
-                force: true,
-            }).catch(() => {
+        })().catch(() => {
 
-                return undefined;
-            });
-        }
+            return undefined;
+        });
     }
 
     #cleanupCwd(cwd: string): void {

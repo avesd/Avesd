@@ -6,6 +6,7 @@
  */
 
 // Synthetic ACP process for testing host lifecycle and configuration without accounts.
+import { appendFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 
 const provider = process.argv[2] ?? "codex";
@@ -29,7 +30,10 @@ const config = () => {
                     value: "high",
                     name: "High",
                 },
-            ],
+            ].filter(option => {
+
+                return !process.env.AVESD_TEST_PROBE_TRACE || model === "deep" || option.value === "medium";
+            }),
         },
         {
             id: "model",
@@ -70,6 +74,14 @@ const send = message => {
 createInterface({ input: process.stdin }).on("line", line => {
 
     const { id, method, params } = JSON.parse(line);
+    if (process.env.AVESD_TEST_PROBE_TRACE) {
+        appendFileSync(process.env.AVESD_TEST_PROBE_TRACE, JSON.stringify({
+            method,
+            model,
+            effort,
+            ...(method === "session/new" ? { mcpCount: params.mcpServers.length } : {}),
+        }) + "\n");
+    }
     if (id === undefined) {
         return;
     }
@@ -126,6 +138,32 @@ createInterface({ input: process.stdin }).on("line", line => {
             result: { configOptions: config() },
         });
     } else if (method === "session/prompt") {
+        if (process.env.AVESD_TEST_PROBE_FAIL === "1" || params.prompt.some(item => {
+
+            return item.text?.includes("Synthetic provider failure");
+        })) {
+            return send({
+                id,
+                result: {
+                    stopReason: "end_turn",
+                    _meta: {
+                        jetbrains: {
+                            air: {
+                                version: 1,
+                                sessionFailure: {
+                                    id: "synthetic-failure",
+                                    revision: 1,
+                                    severity: "error",
+                                    category: "provider",
+                                    title: "Synthetic private provider response",
+                                    actions: [],
+                                },
+                            },
+                        },
+                    },
+                },
+            });
+        }
         const text = process.env.AVESD_TEST_ECHO_CONTEXT === "1"
             ? JSON.stringify({
                 cwd: process.cwd(),
