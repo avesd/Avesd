@@ -11,6 +11,7 @@ import { join } from "node:path";
 const scenarios = {
     "agent-sessions": "agent-sessions.test.mjs",
     browser: "browser.test.mjs",
+    "browser-tasks": "browser-tasks.test.mjs",
     "browser-auth": "browser-auth.test.mjs",
     plugins: "plugin-lifecycle.test.mjs",
     workspace: "workspace.test.mjs",

@@ -27,6 +27,7 @@ import { parseProviderId, providerDefinitions, ProviderInstallations } from "./a
 import { createAgentProviders } from "./agent/providers";
 import { browserBindingFile } from "./browser/browser-binding-file";
 import { BrowserBindings } from "./browser/browser-bindings";
+import { BrowserTasks } from "./browser/browser-tasks";
 import { PluginBrowserBridge } from "./browser/plugin-browser-bridge";
 import { WebSurfaceManager } from "./browser/web-surface-manager";
 import { LocalPluginStore } from "./plugins/local-plugin-store";
@@ -60,6 +61,7 @@ export function startDesktop() {
     const widgetWorkspaceBridge = new WidgetWorkspaceBridge();
     const localWidgetRunner = new LocalWidgetRunner(widgetWorkspaceBridge);
     let webSurfaces: WebSurfaceManager | undefined;
+    let browserTasks: BrowserTasks | undefined;
     let browserBindings: BrowserBindings | undefined;
     let agentRuntimeRoot: string | undefined;
 
@@ -110,14 +112,23 @@ export function startDesktop() {
             return void event.preventDefault();
         });
 
+        browserTasks?.attach(new WebSurfaceManager(window, () => {
+
+            return workspaceFile!.load();
+        }, () => {
+
+            if (!window.isDestroyed()) {
+                window.webContents.send(browserTasksChanged);
+            }
+        }));
         resetWindowServices(window);
         window.on("close", () => {
 
-            webSurfaces?.dispose(); localWidgetSurfaces?.dispose();
+            browserTasks?.detach(); webSurfaces?.dispose(); localWidgetSurfaces?.dispose();
         });
         window.webContents.on("render-process-gone", () => {
 
-            webSurfaces?.dispose(); localWidgetSurfaces?.dispose();
+            browserTasks?.detach(); webSurfaces?.dispose(); localWidgetSurfaces?.dispose();
         });
         window.once("closed", () => {
 
@@ -447,20 +458,12 @@ export function startDesktop() {
     ipcMain.handle(localPluginsChannels.surface, (event, input: unknown) => {
 
         hostForEvent(event);
-        const command = parseWebCommand(input);
+        const command = parseLocalWidgetCommand(input);
         if (!localWidgetSurfaces) {
             throw new Error("Local widgets are not ready.");
         }
-        if (command.type === "create" || command.type === "bounds") {
-            return localWidgetSurfaces.command(command);
-        }
-        if (command.type === "destroy") {
-            return localWidgetSurfaces.command({
-                type: "destroy",
-                id: command.id,
-            });
-        }
-        throw new Error("Invalid local widget command.");
+
+        return localWidgetSurfaces.command(command);
     });
 
     const desktopReady = app.whenReady().then(async () => {
@@ -511,6 +514,19 @@ export function startDesktop() {
             }
         }, privateStorage, resources);
         await workbench.navigate({ type: "inspect" });
+        browserTasks = await BrowserTasks.open(join(storagePaths.dataDirectory, "browser-tasks-v1.json"), () => {
+
+            return workspaceFile!.load();
+        }, () => {
+
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send(browserTasksChanged);
+            }
+        }).catch(() => {
+
+            return undefined;
+        });
+        workbench.setBrowserTasks(browserTasks);
         gateway = await openAgentGateway((name, input) => {
 
             return workbench!.invoke(name, input);

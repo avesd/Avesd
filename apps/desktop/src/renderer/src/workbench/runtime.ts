@@ -6,6 +6,7 @@
  */
 
 import { agentPlugin } from "../plugins/agent/agent-plugin";
+import { createCollectionsPlugin } from "../plugins/collections/collections-plugin";
 import { counterPlugin } from "../plugins/counter/counter-plugin";
 import { createDashboardPlugin } from "../plugins/dashboard/dashboard-plugin";
 import { createLocalPlugin } from "../plugins/local/local-plugin";
@@ -78,7 +79,6 @@ const resolveWidget = (
             displayName: contribution.value.displayName,
             inputs: contribution.value.inputs ?? [],
             pluginId: contribution.pluginId,
-            sizePolicy: contribution.value.sizing.policy,
             widgetTypeId: contribution.value.widgetTypeId,
         }
         : undefined;
@@ -133,6 +133,7 @@ export const startWorkbench = async (): Promise<void> => {
         createWidgetServices(dataSources, window.avesd.browserControls, window.avesd.widgetWorkspace, window.avesd.widgetAgent),
     );
     await pluginHost.replace(counterPlugin);
+    await pluginHost.replace(createCollectionsPlugin(window.avesd.browserTasks));
     await pluginHost.replace(dashboardPlugin);
     await pluginHost.replace(welcomePlugin);
     await pluginHost.replace(createWebPlugin(window.avesd.web, webResults));

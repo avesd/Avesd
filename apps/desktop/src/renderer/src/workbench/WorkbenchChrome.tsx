@@ -7,9 +7,11 @@
 
 import type { AgentProvidersApi } from "../../../shared/agent/providers";
 import type { AgentSessionsApi, AgentSessionSummary } from "../../../shared/agent/sessions";
+import type { BrowserTasksApi } from "../../../shared/browser/browser-tasks";
 import type { WorkspaceStorageApi } from "../../../shared/desktop-api";
 import type { SidebarSide, WorkbenchPreferencesApi } from "../../../shared/workbench/preferences";
 import { AgentSessionsPanel } from "../components/AgentSessionsPanel";
+import { BrowserTasksPanel } from "../components/BrowserTasksPanel";
 import { AgentProviderSettings } from "../components/settings/AgentProviderSettings";
 import { AgentTierSettings } from "../components/settings/AgentTierSettings";
 import { WorkspaceTree } from "../components/WorkspaceTree";
@@ -17,7 +19,7 @@ import { useDashboardEditing } from "./dashboard-editing";
 import type { AgentTier } from "@avesd/plugin-api";
 import { IconButton, PanelHeader, SidePanel, ToolRail, ToolRailButton } from "@avesd/ui";
 import type { DashboardScope, WorkspaceNavigationState } from "@avesd/workspace-model";
-import { Bot, FolderTree, LockKeyhole, MessagesSquare, PanelLeft, PanelRight, Settings2, UnlockKeyhole, X } from "lucide-react";
+import { Bot, FolderTree, Globe, LockKeyhole, MessagesSquare, PanelLeft, PanelRight, Settings2, UnlockKeyhole, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 
@@ -358,7 +360,28 @@ export function WorkbenchChrome({ children, preferences, agentAvailable = true, 
                         aria-hidden="true"
                     />
                 </ToolRailButton>
+                {browserTasks && <ToolRailButton
+                    style={{ order: 6 }}
+                    aria-label="Open background browsers"
+                    title="Background browsers"
+                    aria-expanded={panel === "browsers"}
+                    onClick={() => {
+
+                        setPanel(panel === "browsers" ? undefined : "browsers");
+                    }}
+                >
+                    <Globe
+                        size={19}
+                    />
+                </ToolRailButton>}
             </ToolRail>
+            {panel === "browsers" && browserTasks && <BrowserTasksPanel
+                api={browserTasks}
+                onClose={() => {
+
+                    setPanel(undefined);
+                }}
+            />}
             {panel === "sessions" && agentSessions && <AgentSessionsPanel
                 api={agentSessions}
                 sessions={listing.sessions}

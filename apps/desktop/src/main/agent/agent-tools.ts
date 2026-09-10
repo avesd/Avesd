@@ -5,6 +5,7 @@
  * @description Agent Tools
  */
 
+import { browserTaskRecipeSchema } from "../../shared/browser/browser-tasks";
 import { draftContentSchema, draftIdSchema, revisionSchema } from "../plugins/local-plugin-contract";
 import { McpServer } from "@modelcontextprotocol/server";
 import * as z from "zod";
@@ -22,6 +23,23 @@ export interface AgentToolResult {
 }
 
 export const agentToolDefinitions = {
+    avesd_browser_task: {
+        description: "Manage persistent background browser collection tasks in the active workspace. Save a name, URL, text field CSS selectors, and intervalMinutes (0 for manual). A task owns its private persistent login session and page independently of widgets. Refresh reads exactly one element per field at the configured origin; no clicks or arbitrary scripts. Open for user login and close the login window before refreshing. Pause stops scheduled work; close releases the page but retains the task/login/results. Remove explicitly deletes the task/result, not cookies. List returns metadata only, never extracted values. Display saved output using avesd.builtin.collections/result configured with taskId. Use only for user-requested sites and fields; selector discovery is not automatic.",
+        schema: z.strictObject({
+            type: z.enum([
+                "list",
+                "save",
+                "refresh",
+                "open",
+                "close",
+                "pause",
+                "resume",
+                "remove",
+            ]),
+            id: z.uuid().optional(),
+            recipe: browserTaskRecipeSchema.optional(),
+        }),
+    },
     avesd_list_resources: {
         description: "List intentionally published resource metadata and explicit grants in the active workspace. Returns no storage paths, file contents or SQL rows.",
         schema: z.strictObject({}),
@@ -92,7 +110,7 @@ export const agentToolDefinitions = {
         }),
     },
     avesd_resize_widget: {
-        description: "Resize a widget to an allowed size.",
+        description: "Resize an instance in grid cells, independently of its plugin default size.",
         schema: z.object({
             id: z.string(),
             width: z.number().int()

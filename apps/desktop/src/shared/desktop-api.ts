@@ -9,6 +9,7 @@ import type { AgentProvidersApi } from "./agent/providers";
 import type { AgentSessionsApi } from "./agent/sessions";
 import type { WidgetAgentApi } from "./agent/widget-agent";
 import type { BrowserControlsApi } from "./browser/browser-controls";
+import type { BrowserTasksApi } from "./browser/browser-tasks";
 import type { WebSurfaceApi } from "./browser/web-surface";
 import type { LocalPluginsApi } from "./plugins/local-plugins";
 import type { WorkbenchPreferencesApi } from "./workbench/preferences";
@@ -27,6 +28,7 @@ export interface DesktopRuntime {
 }
 
 export interface DesktopApi {
+    readonly browserTasks: BrowserTasksApi;
     readonly agentSessions: AgentSessionsApi;
     readonly widgetAgent: WidgetAgentApi;
     readonly agentProviders: AgentProvidersApi;

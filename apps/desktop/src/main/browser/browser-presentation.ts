@@ -82,7 +82,7 @@ export class BrowserPresentation {
 
     get presented(): boolean {
 
-        return !!this.#window;
+        return !!this.#window || !!this.#popup;
     }
 
     show(): void {

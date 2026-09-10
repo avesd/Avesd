@@ -51,6 +51,7 @@ export const App = () => {
             key={`${scope.workspaceId}/${scope.dashboardId}`}
         >
             <WorkbenchChrome
+                browserTasks={window.avesd.browserTasks}
                 preferences={window.avesd.preferences}
                 agentProviders={window.avesd.agentProviders}
                 agentSessions={window.avesd.agentSessions}

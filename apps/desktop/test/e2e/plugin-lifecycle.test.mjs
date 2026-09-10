@@ -124,6 +124,12 @@ try {
 
         return tool.name==="avesd_test_plugin";
     }));
+    const browserTask = listed.tools.find(tool => {
+
+        return tool.name === "avesd_browser_task";
+    });
+    assert.equal(browserTask?.inputSchema.type, "object");
+    assert.deepEqual(await tool("avesd_browser_task", { type: "list" }), []);
     const sdk=await tool("avesd_get_widget_sdk");
     const content={
         ...sdk.example,

@@ -27,6 +27,7 @@ interface Surface {
     readonly view: WebContentsView;
     state: WebSurfaceState;
     operation?: symbol;
+    readonly authorizeTask?: () => Promise<void>;
 }
 
 /** Owns trusted built-in widget surfaces. Remote pages receive no preload API. */
@@ -43,6 +44,9 @@ export class WebSurfaceManager {
     async command(command: WebSurfaceCommand, authorize?: () => Promise<void>, plugin?: {
         readonly id: string;
         readonly configuration: PluginBrowserConfiguration;
+    }, task?: {
+        readonly id: string;
+        readonly workspaceId: string;
     }): Promise<WebSurfaceState> {
 
         if (this.#closed) {
@@ -52,15 +56,26 @@ export class WebSurfaceManager {
             const snapshot = await this.load();
             // The surface manager can close while the workspace snapshot is loading.
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-            if (this.#closed || !snapshot?.widgets.some((widget) => {
+            if (this.#closed || (!task && !snapshot?.widgets.some((widget) => {
 
                 return widget.id === command.widgetId && sameDashboard(widget, snapshot.selection)
         && widget.pluginId === (plugin?.id ?? WEB_PLUGIN_ID) && (plugin !== undefined || widget.widgetTypeId === "page");
-            })) {
+            }))) {
                 throw new Error("Web widget is unavailable.");
             }
             const id = randomUUID();
-            const widget = snapshot.widgets.find(item => {
+            if (task && (!authorize || !snapshot?.workspaces.some(item => {
+
+                return item.id === task.workspaceId;
+            }))) {
+                throw new Error("Background task workspace is unavailable.");
+            }
+            const widget = task ? {
+                id: task.id,
+                workspaceId: task.workspaceId,
+                pluginId: "avesd.browser-tasks",
+                configuration: {} as JsonObject,
+            } : snapshot!.widgets.find(item => {
 
                 return item.id === command.widgetId;
             })!;
@@ -71,7 +86,7 @@ export class WebSurfaceManager {
                 });
             const browserSession = await openBrowserSession(this.window, widget.workspaceId, plugin?.id ?? widget.id, configuration);
             const current = await this.load();
-            if (!current?.widgets.some(item => {
+            if (!task && !current?.widgets.some(item => {
 
                 return item.id === widget.id && item.pluginId === widget.pluginId && sameDashboard(item, current.selection);
             })) {
@@ -108,6 +123,7 @@ export class WebSurfaceManager {
             });
             view.setBorderRadius(WEB_VIEW_RADIUS);
             const surface: Surface = {
+                authorizeTask: task ? authorize : undefined,
                 widgetId: command.widgetId,
                 pluginId: widget.pluginId,
                 presentation: new BrowserPresentation(this.window, view, this.changed),
@@ -125,6 +141,14 @@ export class WebSurfaceManager {
             this.#surfaces.set(id, surface);
             this.window.contentView.addChildView(view);
             view.setVisible(false);
+            if (task) {
+                view.setBounds({
+                    x: 0,
+                    y: 0,
+                    width: 1100,
+                    height: 760,
+                });
+            }
             const contents = view.webContents;
             contents.on("did-start-navigation", (_event, _url, _inPlace, mainFrame) => {
 
@@ -184,7 +208,10 @@ export class WebSurfaceManager {
         if (!surface) {
             throw new Error("Web surface is unavailable.");
         }
-        if (command.type === "run" || command.type === "navigate") {
+        if (command.type !== "destroy") {
+            await surface.authorizeTask?.();
+        }
+        if (!surface.authorizeTask && (command.type === "run" || command.type === "navigate")) {
             const snapshot = await this.load();
             if (this.#surfaces.get(command.id) !== surface || !snapshot?.widgets.some((widget) =>
             {
@@ -299,6 +326,11 @@ export class WebSurfaceManager {
         }
 
         return surface.state;
+    }
+
+    isPresented(id: string): boolean {
+
+        return this.#surfaces.get(id)?.presentation.presented ?? false;
     }
 
     async control(command: Extract<BrowserControlsCommand, {

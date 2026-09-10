@@ -18,6 +18,7 @@ selections, stops at the first failure, and bounds each scenario to two minutes.
 | Scenario | Native boundary owned here | Detailed checks owned elsewhere |
 | --- | --- | --- |
 | `agent-sessions` | Native ACP tier routing, independent foreground/background histories, widget sender isolation, cancellation, scope retention, sidebar movement and restart settings | Session lifecycle and route validation in agent unit tests; queued scope enforcement in workbench integration tests |
+| `browser-tasks` | Persistent task recipes/results, widget-independent pages, presentation exclusion, cancellation, restart and workspace isolation | Scheduling, failure retention and command validation in browser task unit tests |
 | `browser` | Remote view sandbox, JS/CSS execution, result binding, origin/action authorization, navigation and teardown | URL/result parsing and browser grant rules in `test/unit/shared/browser` and `test/unit/main/browser` |
 | `browser-auth` | Plugin browser sender/origin checks, persistent shared sessions, login presentation, popup session and restart | Session consent/isolation and manifest validation in browser unit suites |
 | `plugins` | Real MCP relay, draft/test/activate flow, actual local sandbox restrictions, preview lifecycle, edit visibility and restart | Manifest validation and revision state rules in `test/unit/main/plugins` |

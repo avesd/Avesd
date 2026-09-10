@@ -5,6 +5,7 @@
  * @description Agent Workbench
  */
 
+import { browserTaskCommandSchema } from "../../shared/browser/browser-tasks";
 import type { AgentWorkbenchContext } from "../../shared/desktop-api";
 import { localWidgetDefinition } from "../../shared/plugins/local-plugins";
 import type { WidgetWorkspaceRequest, WidgetWorkspaceResult } from "../../shared/workspace/widget-workspace";
@@ -13,13 +14,14 @@ import { requiredWorkspaceCapability } from "../../shared/workspace/widget-works
 import { parseWorkspaceNavigation } from "../../shared/workspace/workspace-navigation";
 import type { AgentToolResult } from "../agent/agent-tools";
 import { agentToolDefinitions } from "../agent/agent-tools";
+import type { BrowserTasks } from "../browser/browser-tasks";
 import { localPluginSdk } from "../plugins/local-plugin-contract";
 import type { LocalPluginStore } from "../plugins/local-plugin-store";
 import type { LocalWidgetRunner } from "../plugins/local-widget-sandbox";
 import type { PluginStorage } from "../storage/plugin-storage";
 import type { SharedResources } from "../storage/shared-resources";
 import type { WorkspaceFile } from "../storage/workspace-file";
-import type { DashboardLayoutOperation, DashboardScope, DataSourceId, JsonValue, WidgetInstanceId, WorkspaceNavigationCommand, WorkspaceNavigationState, WorkspaceSnapshot } from "@avesd/workspace-model";
+import type { DashboardLayoutOperation, DashboardScope, DataSourceId, JsonObject, JsonValue, WidgetInstanceId, WorkspaceNavigationCommand, WorkspaceNavigationState, WorkspaceSnapshot } from "@avesd/workspace-model";
 import { DashboardLayoutCoordinator, navigateWorkspace, PersistentWorkspaceRepository, readWorkspaceCatalog, sameDashboard, WorkspaceDataCoordinator } from "@avesd/workspace-model";
 import { randomUUID } from "node:crypto";
 
@@ -44,6 +46,11 @@ const result = (value: unknown, image?: string): AgentToolResult => {
 
 /** The desktop owns writes and the live catalog; MCP never opens workspace files. */
 export class AgentWorkbench {
+    #browserTasks?: BrowserTasks;
+    setBrowserTasks(tasks: BrowserTasks | undefined): void {
+
+        this.#browserTasks = tasks;
+    }
     #context?: AgentWorkbenchContext;
     #scope?: DashboardScope;
     #scopeEpoch = 0;
@@ -263,6 +270,21 @@ export class AgentWorkbench {
         }
         const definitions = agentToolDefinitions;
         const parsed: unknown = definitions[name as keyof typeof definitions].schema.parse(input);
+        if (name === "avesd_browser_task") {
+            const workspaceId = this.#scope?.workspaceId;
+            if (!workspaceId || !this.#browserTasks) {
+                throw new Error("Background browsers are unavailable.");
+            }
+            const tasks = await this.#browserTasks.command(workspaceId, browserTaskCommandSchema.parse(parsed));
+
+            return result(tasks.map(task => {
+
+                return Object.fromEntries(Object.entries(task).filter(([key]) => {
+
+                    return key !== "result";
+                }));
+            }));
+        }
         if (name === "avesd_get_widget_sdk") {
             return result(localPluginSdk);
         }
@@ -411,7 +433,11 @@ export class AgentWorkbench {
                     layout: await layouts.inspect(scope),
                 });
                 case "avesd_add_widget": return apply({
-                    ...definitions.avesd_add_widget.schema.parse(parsed),
+                    ...definitions.avesd_add_widget.schema.parse(parsed) as {
+                        pluginId: string;
+                        widgetTypeId: string;
+                        configuration?: JsonObject;
+                    },
                     type: "add",
                     id: randomUUID() as WidgetInstanceId,
                 });

@@ -963,3 +963,13 @@ button {
 .session-open span, .session-open time { font-size: 12px; color: #60685b; }
 .session-actions { align-items: center; }
 .workbench-session-error { position: fixed; z-index: 100; bottom: 20px; left: 20px; padding: 12px; background: #fff1ec; border: 1px solid #bd6351; border-radius: 8px; }
+
+.browser-tasks-content { padding: 18px; overflow-y: auto; min-height: 0; }
+.browser-tasks-content p { font-size: 12px; line-height: 1.5; color: #697361; overflow-wrap: anywhere; }
+.browser-tasks-content [role="alert"], .browser-tasks-content .browser-task-error { color: #974c3c; }
+.browser-tasks-content fieldset { margin: 16px 0; padding: 12px; border: 1px solid #d2dacb; border-radius: 10px; min-width: 0; }
+.browser-tasks-content label { display: grid; gap: 5px; margin: 12px 0; font-size: 12px; }
+.browser-tasks-content input, .browser-tasks-content select, .browser-tasks-content textarea { width: 100%; box-sizing: border-box; min-width: 0; padding: 8px; border: 1px solid #c8d1c1; border-radius: 6px; background: #fff; color: #35432e; }
+.browser-task-row { margin-top: 18px; padding-top: 16px; border-top: 1px solid #dbe1d5; }
+.browser-task-row h3 { margin: 0; font-size: 15px; }
+.browser-task-actions { display: flex; flex-wrap: wrap; gap: 6px; }

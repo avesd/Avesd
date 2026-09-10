@@ -12,6 +12,8 @@ import { agentSessionsChannels } from "../shared/agent/sessions";
 import type { WidgetAgentRequest } from "../shared/agent/widget-agent";
 import type { BrowserBinding, BrowserControlAction, BrowserControlsCommand } from "../shared/browser/browser-controls";
 import { browserControlsChannel } from "../shared/browser/browser-controls";
+import type { BrowserTaskCommand, BrowserTaskSummary } from "../shared/browser/browser-tasks";
+import { browserTasksChanged, browserTasksChannel } from "../shared/browser/browser-tasks";
 import type { WebSurfaceCommand, WebSurfaceCommandResult } from "../shared/browser/web-surface";
 import { unwrapWebSurfaceCommand, webSurfaceChannel, webSurfaceEventChannel } from "../shared/browser/web-surface";
 import type { AgentWorkbenchContext, DesktopApi } from "../shared/desktop-api";
@@ -30,6 +32,21 @@ import type { WorkspaceNavigationCommand, WorkspaceNavigationState } from "@aves
 import { ipcRenderer } from "electron";
 
 export const desktopApi: DesktopApi = Object.freeze({
+    browserTasks: {
+        command: (command: BrowserTaskCommand) => {
+
+            return ipcRenderer.invoke(browserTasksChannel, command) as Promise<readonly BrowserTaskSummary[]>;
+        },
+        subscribe: (listener: () => void) => {
+
+            ipcRenderer.on(browserTasksChanged, listener);
+
+            return () => {
+
+                ipcRenderer.off(browserTasksChanged, listener);
+            };
+        },
+    },
     widgetAgent: {
         invoke: (widgetId: string, request: WidgetAgentRequest) => {
 
